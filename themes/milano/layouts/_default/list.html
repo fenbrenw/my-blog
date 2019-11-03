@@ -1,0 +1,18 @@
+{{ partial "header.html" . }}
+
+{{if not .IsHome }}
+	<h1>{{ .Title }}</h1>
+{{ end }}
+
+<main>{{ .Content }}</main>
+
+<ul>
+	{{ $paginator := .Paginate (where .Data.Pages "Type" "!=" "page") }}
+	{{ range $paginator.Pages }} 
+		{{ partial "list-item" . }}
+	{{ end }}
+</ul>
+
+{{ partial "paginator" . }}
+
+{{ partial "footer.html" . }}

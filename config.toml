@@ -1,0 +1,59 @@
+baseurl = "https://phennin.com/"
+languageCode = "en-us"
+title = "My minimal Hugo website"
+theme = "milano"
+googleAnalytics = ""
+disqusShortname = ""
+ignoreFiles = ["\\.Rmd$", "\\.Rmarkdown$", "_files$", "_cache$"]
+paginate = "10"
+preserveTaxonomyNames = true
+footnotereturnlinkcontents = "↩"
+
+[permalinks]
+    post = "/post/:slug/"
+
+[[menu.main]]
+    name = "Home"
+    url = "/"
+    weight = -100
+[[menu.main]]
+    name = "Blog"
+    url = "/post/"
+    weight = -75
+[[menu.main]]
+    name = "Categories"
+    url = "/categories/"
+    weight = -50
+[[menu.main]]
+    name = "Tags"
+    url = "/tags/"
+    weight = -25
+
+[params]
+    description = "A website built through Hugo."
+    accent = "#0078ff"
+    post_navigation = true
+    font_title = "Raleway" # should match the name on Google Fonts
+    font = "Proxima Nova" # should match the name on Google Fonts
+    footer = "&copy; All rights reserved. Powered by [Hugo](https://gohugo.io/) and [Milano](https://github.com/oneleaftea/milano)"
+
+# Social icons to be shown on the right-hand side of the navigation bar
+# The "name" field should match the name of the icon to be used
+# The list of available icons can be found at http://fontawesome.io/icons/
+
+[[menu.icon]]
+    url = "mailto:me@example.com"
+    name = "envelope-o"
+    weight = 1
+
+[[menu.icon]]
+    url = "https://github.com/fenbrenw/my-blog/"
+    name = "github"
+    weight = 2
+
+[[menu.icon]]
+    url = "https://www.linkedin.com/in/user-name-a123456789/"
+    name = "linkedin"
+    weight = 3
+
+

@@ -1,0 +1,41 @@
+{{ partial "header.html" . }}
+
+<div class="article-meta">
+	<span class="title">{{ .Title }}</span>
+	{{ if .Params.date }}
+		<div class="meta">{{ .Date.Format "January 2, 2006" }}</div>
+	{{ end }}
+	{{ $catlist := .Params.categories }}
+	{{ if $catlist }}
+		<div class="meta">
+			[ {{ range $i, $e := .Params.categories }}{{ if $i }}, {{ end }}
+			<a href='{{ "categories/" |  relURL }}{{ . | urlize }}'>{{ . }}</a>{{ end }} ]
+		</div>
+	{{ end }}
+	{{ range .Params.tags }}<kbd class="item-tag">
+		<a href='{{ "tags/" |  relURL }}{{ . | urlize }}'>{{ . }}</a></kbd>
+	{{ end }}
+</div>
+
+<main>{{ .Content }}</main>
+
+{{ if not .Params.nav_off }}
+	{{ partial "post_nav.html" . }}
+{{ end }}
+
+<!-- related posts with the same tags -->
+{{ $related := .Site.RegularPages.Related . | first 5 }}
+
+{{ with $related }}
+	<h4 class="related">Related Posts</h4>
+	{{ range . }}
+		{{ partial "list-item" . }}
+	{{ end }}
+{{ end }}
+    
+{{ if and .Site.DisqusShortname (not .Params.disableComments) }}
+	<h4 class="comment">Comments</h4>
+	{{ template "_internal/disqus.html" . }}
+{{ end }}
+
+{{ partial "footer.html" . }}
