@@ -1,4 +1,4 @@
-baseurl = "https://phennin.com/"
+baseurl = "/"
 languageCode = "en-us"
 title = "My minimal Hugo website"
 theme = "milano"
