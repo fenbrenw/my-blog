@@ -1,6 +1,6 @@
 ---
-author: Yudy Chen
-date: "2014-04-07"
+author: FBW
+date: "2019-11-03"
 description: Stuff to check out
 disable_comments: true
 disableComments: true
@@ -13,10 +13,7 @@ nav_off: true
 title: Links
 ---
 
-Some Links to Check Out...
-
 **[Official Hugo Website](https://gohugo.io/):**  Hugo is what I used to build this site. 
-
 
 **[Blogdown Github Page](https://github.com/rstudio/blogdown):**  Awesome tool by Yihui Xie that makes it super easy to create Hugo pages using R Markdown directly from R Studio. 
 

@@ -1,6 +1,6 @@
 ---
-author: Yudy Chen
-date: "2015-04-07"
+author: FBW
+date: "2019-11-03"
 description: About this site...
 disable_comments: true
 disableComments: true
@@ -13,4 +13,4 @@ nav_off: true
 title: About
 ---
 
-Confusion in her eyes says it all... she's lost control.
+Avid R user with a passion for analyzing financial data.

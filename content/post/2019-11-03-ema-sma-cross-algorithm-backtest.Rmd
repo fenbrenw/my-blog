@@ -1,0 +1,127 @@
+---
+title: EMA SMA Cross Algorithm & Backtest
+author: FW
+date: '2019-11-03'
+slug: ema-sma-cross-algorithm-backtest
+categories: [Fintech]
+tags:
+  - r
+  - algotrading
+disableComments: no
+---
+
+I decided to try making a simple algorithm trader in R.
+
+The algorithm is a play on the "moving average crossover" strategy. Traditionally, this strategy involves taking two simply moving averages (SMAs) -- one that averages over a longer time window, and one that averages over a shorter time window -- and buy/sell based on when the two SMAs crossover. However, I decided to use an exponential moving average (EMA) and an SMA over the same time window. An EMA is more sensitive to recent data than an SMA, so perhaps the EMA can give earlier insight as to when price is about to break up or down. 
+
+I first used a 50-day window for the moving averages. When the EMA crossed above the SMA, I bought. When the EMA cross below the SMA, I sold. This analysis was repeated using 10-day and 20-day windows. The trading instrument I used was **SPY**, the SPDR S&P500 ETF. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. **However, trade at your own risk.** Neither I, nor your parents, nor Jesus are responsible for your financial decisions. 
+
+To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.
+
+I assumed a starting investment of $10,000 USD, only traded long, and simulated a backtest over the daily  price between end of 1999 and 2019, the earliest and latest data available through alphavantager at the time of this analysis.
+
+**TL;DR: My algorithm did not make money and I'm still not a billionaire :( **
+
+***
+
+Load libraries.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(tidyquant)
+library(reshape2)
+library(ggplot2)
+library(lubridate)
+library(alphavantager)
+library(scales)
+```
+
+```
+library(tidyverse)
+library(tidyquant)
+library(reshape2)
+library(ggplot2)
+library(lubridate)
+library(alphavantager)
+library(scales)
+```
+
+Set Alphavantager key.
+```{r}
+# av_api_key("my_key_goes_here"))
+```
+```{r, echo = FALSE}
+av_api_key("ZVWHBIOOHGCNKHD3")
+```
+
+# Get historical ETF data
+
+Get daily price data between 1999 and 2019.
+
+```{r, message = FALSE, warning = FALSE}
+# av_get(symbol = "SPY"
+#        , av_fun = "TIME_SERIES_DAILY_ADJUSTED"
+#        , outputsize = "full") %>%
+#   mutate(row_id = row_number()) %>%
+#   select(row_id, timestamp, open, close) -> all_dat
+```
+
+```{r, echo = FALSE}
+all_dat <- readRDS("/Users/Fennon/Desktop/My Blog/projects/ema_sma_cross/all_dat.rds")
+```
+
+
+# Moving Averages
+
+Calculate exponential and simple moving averages over 50-day window (EMA50, SMA50).
+
+```{r, message = FALSE, warning = FALSE}
+all_dat %>%
+  mutate(EMA50 = EMA(close, n = 50),
+         SMA50 = SMA(close, n = 50)) %>%
+  filter(!is.na(SMA50)) -> all_dat_w_mas
+```
+
+Convert data format from wide to long.
+
+```{r, warning = FALSE}
+all_dat_w_mas %>%
+  select(-row_id) %>% 
+  gather("var", "value", 2:5) -> all_dat_w_mas_long
+```
+
+
+Plot daily close price, EMA50, and SMA50.
+
+```{r, warning = FALSE}
+all_dat_w_mas_long %>%
+  filter(var %in% c("close", "EMA50", "SMA50")) %>%
+  ggplot(aes(x=timestamp, y=value, color = var)) +
+  geom_line(aes(color = var, size = var)) +
+  scale_color_manual(values = c("black", "cyan", "blue")) +
+  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+  xlab("Date") +
+  ylab("Close") +
+  theme_classic() +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("SPY with Moving Averages")
+```
+
+Oof, that's a lot of data to take in. To better see the EMA/SMA relationship, here's a closer look at the first year.
+```{r, echo = FALSE, warning = FALSE}
+all_dat_w_mas_long %>%
+  filter(var %in% c("close", "EMA50", "SMA50")) %>%
+  filter(timestamp < "2001-01-01") %>% 
+  ggplot(aes(x=timestamp, y=value, color = var)) +
+  geom_line(aes(color = var, size = var)) +
+  scale_color_manual(values = c("black", "cyan", "blue")) +
+  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+  xlab("Date") +
+  ylab("Close") +
+  theme_classic() +
+  theme(legend.title = element_blank())
+```
+
