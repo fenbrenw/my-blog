@@ -16,7 +16,7 @@ I used a 50-day simple moving average (SMA) as the "slow" one and 10, 20, 30, an
 
 To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.
 
-The alogirthm was trained and tested on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.
+The algorithm was trained and tested on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.
 
 ## Assumptions
 
@@ -144,9 +144,10 @@ train_dat_w_mas_long %>%
 # Encode buy/sell signals and decisions
 
 Buy/sell decisions are made as follows:
+
 * Buy if EMA > SMA (unless I bought already)
 * Sell if EMA < SMA (unless I sold already)
 
-I code the decisions in two passes: the first pass codes the signal, and the second pass codes the decision. Basically, the decision coding will make sure I don't buy again if the last action was to buy, and I won't sell again if the last action was to sell. 
+I'll encode the decisions in two passes for each EMA/SMA pair: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure I don't buy again if the last action was to buy, and I don't sell again if the last action was to sell. 
 
 
