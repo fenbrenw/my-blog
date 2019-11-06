@@ -12,11 +12,20 @@ disableComments: no
 
 
 
-<p>I decided to try making a simple algorithm trader in R.</p>
-<p>The algorithm is a play on the “moving average crossover” strategy. Traditionally, this strategy involves taking two simply moving averages (SMAs) – one that averages over a longer time window, and one that averages over a shorter time window – and buy/sell based on when the two SMAs crossover. However, I decided to use an exponential moving average (EMA) and an SMA over the same time window. An EMA is more sensitive to recent data than an SMA, so perhaps the EMA can give earlier insight as to when price is about to break up or down.</p>
-<p>I first used a 50-day window for the moving averages. When the EMA crossed above the SMA, I bought. When the EMA cross below the SMA, I sold. This analysis was repeated using 10-day and 20-day windows. The trading instrument I used was <strong>SPY</strong>, the SPDR S&amp;P500 ETF. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. <strong>However, trade at your own risk.</strong> Neither I, nor your parents, nor Jesus are responsible for your financial decisions.</p>
+<p>This algorithm is based on the “moving average crossover” strategy. Traditionally, this strategy involves taking two moving averages – a “slow” one that averages over a longer time window and a “fast” one that averages over a shorter time window – and buy/sell based on when the two moving averages crossover.</p>
+<p>I used a 50-day simple moving average (SMA) as the “slow” one and 10, 20, 30, and 40-day exponential moving averages (EMA) as the fast ones. For each SMA/EMA pair, I bought when the EMA crossed above the SMA and sold when the EMA crossed below. I decided to trade <strong>SPY</strong>, the SPDR S&amp;P500 ETF. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. <strong>However, trade at your own risk.</strong> Neither I, nor your parents, nor Jesus are responsible for your financial decisions.</p>
 <p>To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.</p>
-<p>I assumed a starting investment of $10,000 USD, only traded long, and simulated a backtest over the daily price between end of 1999 and 2019, the earliest and latest data available through alphavantager at the time of this analysis.</p>
+<p>The alogirthm was trained and tested on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.</p>
+<div id="assumptions" class="section level2">
+<h2>Assumptions</h2>
+<ul>
+<li>Starting investment of $10,000 USD</li>
+<li>Long-only strategy</li>
+<li>Trade decisions based on daily close price, but trade entry/exit based on next day open</li>
+<li>Train set = data from 1999 to 2015</li>
+<li>Test set = data from 2015 to 2019</li>
+<li>Strategy to beat: buy and hold over entire time period</li>
+</ul>
 <p><strong>TL;DR: My algorithm did not make money and I’m still not a billionaire :( </strong></p>
 <hr />
 <p>Load libraries.</p>
@@ -29,33 +38,39 @@ library(alphavantager)
 library(scales)</code></pre>
 <p>Set Alphavantager key.</p>
 <pre class="r"><code># av_api_key(&quot;my_key_goes_here&quot;))</code></pre>
+</div>
 <div id="get-historical-etf-data" class="section level1">
 <h1>Get historical ETF data</h1>
-<p>Get daily price data between 1999 and 2019.</p>
+<p>Get all available daily price data and split into train and test sets.</p>
 <pre class="r"><code># av_get(symbol = &quot;SPY&quot;
 #        , av_fun = &quot;TIME_SERIES_DAILY_ADJUSTED&quot;
 #        , outputsize = &quot;full&quot;) %&gt;%
 #   mutate(row_id = row_number()) %&gt;%
-#   select(row_id, timestamp, open, close) -&gt; all_dat</code></pre>
+#   select(row_id, timestamp, open, close) -&gt; all_dat
+
+# train_dat &lt;- all_dat %&gt;% filter(row_id &lt;= floor(nrow(all_dat)*.80))
+# test_dat &lt;- all_dat %&gt;% filter(!row_id %in% train_dat$row_id)</code></pre>
 </div>
 <div id="moving-averages" class="section level1">
 <h1>Moving Averages</h1>
-<p>Calculate exponential and simple moving averages over 50-day window (EMA50, SMA50).</p>
-<pre class="r"><code>all_dat %&gt;%
-  mutate(EMA50 = EMA(close, n = 50),
-         SMA50 = SMA(close, n = 50)) %&gt;%
-  filter(!is.na(SMA50)) -&gt; all_dat_w_mas</code></pre>
+<p>Calculate EMAs and SMA over all desired time windows.</p>
+<pre class="r"><code>train_dat %&gt;%
+  mutate(EMA10 = EMA(close, n = 10)
+         , EMA20 = EMA(close, n = 20)
+         , EMA30 = EMA(close, n = 30)
+         , EMA40 = EMA(close, n = 40)
+         , SMA50 = SMA(close, n = 50)) %&gt;%
+  filter(!is.na(SMA50)) -&gt; train_dat_w_mas</code></pre>
 <p>Convert data format from wide to long.</p>
-<pre class="r"><code>all_dat_w_mas %&gt;%
+<pre class="r"><code>train_dat_w_mas %&gt;%
   select(-row_id) %&gt;% 
-  gather(&quot;var&quot;, &quot;value&quot;, 2:5) -&gt; all_dat_w_mas_long</code></pre>
-<p>Plot daily close price, EMA50, and SMA50.</p>
-<pre class="r"><code>all_dat_w_mas_long %&gt;%
-  filter(var %in% c(&quot;close&quot;, &quot;EMA50&quot;, &quot;SMA50&quot;)) %&gt;%
+  gather(&quot;var&quot;, &quot;value&quot;, 2:8) -&gt; train_dat_w_mas_long</code></pre>
+<p>Plot daily close price and moving averages.</p>
+<pre class="r"><code>train_dat_w_mas_long %&gt;% 
+  filter(!var %in% c(&quot;open&quot;)) %&gt;% 
   ggplot(aes(x=timestamp, y=value, color = var)) +
-  geom_line(aes(color = var, size = var)) +
-  scale_color_manual(values = c(&quot;black&quot;, &quot;cyan&quot;, &quot;blue&quot;)) +
-  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  geom_line(aes(group = factor(var)), size = 0.5) +
+  scale_color_manual(values = c(&quot;black&quot;, &quot;orange&quot;, &quot;green&quot;, &quot;turquoise&quot;, &quot;magenta&quot;, &quot;blue&quot;)) +
   scale_x_date(date_breaks = &quot;years&quot; , date_labels = &quot;%Y&quot;) +
   xlab(&quot;Date&quot;) +
   ylab(&quot;Close&quot;) +
@@ -64,5 +79,11 @@ library(scales)</code></pre>
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(&quot;SPY with Moving Averages&quot;)</code></pre>
 <p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
-<p>Oof, that’s a lot of data to take in. To better see the EMA/SMA relationship, here’s a closer look at the first year. <img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Oof, that’s a lot of data to take in. To better see the EMA/SMA relationship, here’s a closer look at the couple of years.</p>
+<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+</div>
+<div id="encode-buysell-signals-and-decisions" class="section level1">
+<h1>Encode buy/sell signals and decisions</h1>
+<p>Buy/sell decisions are made as follows: * Buy if EMA &gt; SMA (unless I bought already) * Sell if EMA &lt; SMA (unless I sold already)</p>
+<p>I code the decisions in two passes: the first pass codes the signal, and the second pass codes the decision. Basically, the decision coding will make sure I don’t buy again if the last action was to buy, and I won’t sell again if the last action was to sell.</p>
 </div>

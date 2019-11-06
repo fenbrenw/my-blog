@@ -13,4 +13,4 @@ nav_off: true
 title: About
 ---
 
-Avid R user with a passion for analyzing financial data.
+R user who enjoys analyzing financial data and making (unprofitable) trading algorithms.

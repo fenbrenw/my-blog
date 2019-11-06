@@ -10,15 +10,22 @@ tags:
 disableComments: no
 ---
 
-I decided to try making a simple algorithm trader in R.
+This algorithm is based on the "moving average crossover" strategy. Traditionally, this strategy involves taking two moving averages -- a "slow" one that averages over a longer time window and a "fast" one that averages over a shorter time window -- and buy/sell based on when the two moving averages crossover.
 
-The algorithm is a play on the "moving average crossover" strategy. Traditionally, this strategy involves taking two simply moving averages (SMAs) -- one that averages over a longer time window, and one that averages over a shorter time window -- and buy/sell based on when the two SMAs crossover. However, I decided to use an exponential moving average (EMA) and an SMA over the same time window. An EMA is more sensitive to recent data than an SMA, so perhaps the EMA can give earlier insight as to when price is about to break up or down. 
-
-I first used a 50-day window for the moving averages. When the EMA crossed above the SMA, I bought. When the EMA cross below the SMA, I sold. This analysis was repeated using 10-day and 20-day windows. The trading instrument I used was **SPY**, the SPDR S&P500 ETF. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. **However, trade at your own risk.** Neither I, nor your parents, nor Jesus are responsible for your financial decisions. 
+I used a 50-day simple moving average (SMA) as the "slow" one and 10, 20, 30, and 40-day exponential moving averages (EMA) as the fast ones. For each SMA/EMA pair, I bought when the EMA crossed above the SMA and sold when the EMA crossed below. I decided to trade **SPY**, the SPDR S&P500 ETF. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. **However, trade at your own risk.** Neither I, nor your parents, nor Jesus are responsible for your financial decisions. 
 
 To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.
 
-I assumed a starting investment of $10,000 USD, only traded long, and simulated a backtest over the daily  price between end of 1999 and 2019, the earliest and latest data available through alphavantager at the time of this analysis.
+The alogirthm was trained and tested on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.
+
+## Assumptions
+
+* Starting investment of $10,000 USD
+* Long-only strategy
+* Trade decisions based on daily close price, but trade entry/exit based on next day open
+* Train set = data from 1999 to 2015
+* Test set = data from 2015 to 2019
+* Strategy to beat: buy and hold over entire time period
 
 **TL;DR: My algorithm did not make money and I'm still not a billionaire :( **
 
@@ -56,7 +63,7 @@ av_api_key("ZVWHBIOOHGCNKHD3")
 
 # Get historical ETF data
 
-Get daily price data between 1999 and 2019.
+Get all available daily price data and split into train and test sets.
 
 ```{r, message = FALSE, warning = FALSE}
 # av_get(symbol = "SPY"
@@ -64,42 +71,49 @@ Get daily price data between 1999 and 2019.
 #        , outputsize = "full") %>%
 #   mutate(row_id = row_number()) %>%
 #   select(row_id, timestamp, open, close) -> all_dat
+
+# train_dat <- all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80))
+# test_dat <- all_dat %>% filter(!row_id %in% train_dat$row_id)
 ```
 
 ```{r, echo = FALSE}
 all_dat <- readRDS("/Users/Fennon/Desktop/My Blog/projects/ema_sma_cross/all_dat.rds")
+train_dat <- all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80))
+test_dat <- all_dat %>% filter(!row_id %in% train_dat$row_id)
 ```
 
 
 # Moving Averages
 
-Calculate exponential and simple moving averages over 50-day window (EMA50, SMA50).
+Calculate EMAs and SMA over all desired time windows.
 
 ```{r, message = FALSE, warning = FALSE}
-all_dat %>%
-  mutate(EMA50 = EMA(close, n = 50),
-         SMA50 = SMA(close, n = 50)) %>%
-  filter(!is.na(SMA50)) -> all_dat_w_mas
+train_dat %>%
+  mutate(EMA10 = EMA(close, n = 10)
+         , EMA20 = EMA(close, n = 20)
+         , EMA30 = EMA(close, n = 30)
+         , EMA40 = EMA(close, n = 40)
+         , SMA50 = SMA(close, n = 50)) %>%
+  filter(!is.na(SMA50)) -> train_dat_w_mas
 ```
 
 Convert data format from wide to long.
 
 ```{r, warning = FALSE}
-all_dat_w_mas %>%
+train_dat_w_mas %>%
   select(-row_id) %>% 
-  gather("var", "value", 2:5) -> all_dat_w_mas_long
+  gather("var", "value", 2:8) -> train_dat_w_mas_long
 ```
 
 
-Plot daily close price, EMA50, and SMA50.
+Plot daily close price and moving averages.
 
 ```{r, warning = FALSE}
-all_dat_w_mas_long %>%
-  filter(var %in% c("close", "EMA50", "SMA50")) %>%
+train_dat_w_mas_long %>% 
+  filter(!var %in% c("open")) %>% 
   ggplot(aes(x=timestamp, y=value, color = var)) +
-  geom_line(aes(color = var, size = var)) +
-  scale_color_manual(values = c("black", "cyan", "blue")) +
-  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  geom_line(aes(group = factor(var)), size = 0.5) +
+  scale_color_manual(values = c("black", "orange", "green", "turquoise", "magenta", "blue")) +
   scale_x_date(date_breaks = "years" , date_labels = "%Y") +
   xlab("Date") +
   ylab("Close") +
@@ -109,19 +123,30 @@ all_dat_w_mas_long %>%
   ggtitle("SPY with Moving Averages")
 ```
 
-Oof, that's a lot of data to take in. To better see the EMA/SMA relationship, here's a closer look at the first year.
+Oof, that's a lot of data to take in. To better see the EMA/SMA relationship, here's a closer look at the couple of years.
+
 ```{r, echo = FALSE, warning = FALSE}
-all_dat_w_mas_long %>%
-  filter(var %in% c("close", "EMA50", "SMA50")) %>%
-  filter(timestamp < "2001-01-01") %>% 
+train_dat_w_mas_long %>% 
+  filter(!var %in% c("open")
+         , timestamp <= "2002-01-01" ) %>% 
   ggplot(aes(x=timestamp, y=value, color = var)) +
-  geom_line(aes(color = var, size = var)) +
-  scale_color_manual(values = c("black", "cyan", "blue")) +
-  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  geom_line(aes(group = factor(var)), size = 0.5) +
+  scale_color_manual(values = c("black", "orange", "green", "turquoise", "magenta", "blue")) +
   scale_x_date(date_breaks = "years" , date_labels = "%Y") +
   xlab("Date") +
   ylab("Close") +
   theme_classic() +
-  theme(legend.title = element_blank())
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("SPY with Moving Averages")
 ```
+
+# Encode buy/sell signals and decisions
+
+Buy/sell decisions are made as follows:
+* Buy if EMA > SMA (unless I bought already)
+* Sell if EMA < SMA (unless I sold already)
+
+I code the decisions in two passes: the first pass codes the signal, and the second pass codes the decision. Basically, the decision coding will make sure I don't buy again if the last action was to buy, and I won't sell again if the last action was to sell. 
+
 
