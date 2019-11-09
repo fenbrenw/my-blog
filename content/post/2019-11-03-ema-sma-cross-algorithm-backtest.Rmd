@@ -470,11 +470,8 @@ for(i in 1:length(names(trades_ready))){
         stop("ACCOUNT BLOWN!")
         
       }
-      
     }
-    
   }
-  
 }
 
 ```
