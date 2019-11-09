@@ -103,8 +103,6 @@ library(scales)</code></pre>
 
 all_dat %&gt;% filter(row_id &lt;= floor(nrow(all_dat)*.80)) -&gt; train_dat
 all_dat %&gt;% filter(!row_id %in% train_dat$row_id) -&gt; test_dat</code></pre>
-<pre class="r"><code>train_dat &lt;- all_dat %&gt;% filter(row_id &lt;= floor(nrow(all_dat)*.80))
-test_dat &lt;- all_dat %&gt;% filter(!row_id %in% train_dat$row_id)</code></pre>
 </div>
 <div id="moving-averages" class="section level1">
 <h1>Moving Averages</h1>
@@ -133,9 +131,9 @@ test_dat &lt;- all_dat %&gt;% filter(!row_id %in% train_dat$row_id)</code></pre>
   theme(legend.title = element_blank()) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(&quot;SPY with Moving Averages&quot;)</code></pre>
-<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
 <p>Wow, what a clear chart…To better see the EMA/SMA relationship, here’s a closer look at the first couple of years.</p>
-<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
 </div>
 <div id="encode-buysell-signals-and-decisions" class="section level1">
 <h1>Encode buy/sell signals and decisions</h1>

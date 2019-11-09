@@ -79,13 +79,10 @@ all_dat %>% filter(!row_id %in% train_dat$row_id) -> test_dat
 
 ```{r, echo = FALSE}
 all_dat <- readRDS("/Users/Fennon/Desktop/My Blog/projects/ema_sma_cross/all_dat.rds")
-```
 
-```{r, eval = TRUE}
-train_dat <- all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80))
-test_dat <- all_dat %>% filter(!row_id %in% train_dat$row_id)
+all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80)) -> train_dat
+all_dat %>% filter(!row_id %in% train_dat$row_id) -> test_dat
 ```
-
 
 # Moving Averages
 
