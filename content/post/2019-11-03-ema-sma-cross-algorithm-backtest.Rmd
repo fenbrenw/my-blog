@@ -1,9 +1,9 @@
 ---
-title: EMA SMA Cross Algorithm & Backtest
+title: EMA/SMA Cross Algorithm & Backtest
 author: FW
 date: '2019-11-03'
 slug: ema-sma-cross-algorithm-backtest
-categories: [Fintech]
+categories: [Finance]
 tags:
   - r
   - algotrading
@@ -16,7 +16,7 @@ I used a 50-day simple moving average (SMA) as the "slow" one and 10, 20, 30, an
 
 To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.
 
-The algorithm was trained (in-sample) and tested (out-sample) on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.
+The algorithm was trained (in-sample) and tested (out-of-sample) on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.
 
 ## Assumptions
 
@@ -34,11 +34,12 @@ The algorithm was trained (in-sample) and tested (out-sample) on a 80/20 split o
 
 Load libraries.
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE}
+```{r echo = FALSE, warning = FALSE, message = FALSE}
 library(tidyverse)
 library(tidyquant)
 library(reshape2)
 library(ggplot2)
+library(gridExtra)
 library(lubridate)
 library(alphavantager)
 library(scales)
@@ -55,18 +56,19 @@ library(scales)
 ```
 
 Set Alphavantager key.
-```{r}
-# av_api_key("my_key_goes_here"))
+```{r eval = FALSE}
+av_api_key("my_key_goes_here")
 ```
-```{r, echo = FALSE}
+
+```{r echo = FALSE}
 av_api_key("ZVWHBIOOHGCNKHD3")
 ```
 
-# Get historical ETF data
+# Get Historical ETF Data
 
 Get all available daily price data and split into train and test sets.
 
-```{r, eval = FALSE}
+```{r eval = FALSE, message = FALSE}
 av_get(symbol = "SPY"
        , av_fun = "TIME_SERIES_DAILY_ADJUSTED"
        , outputsize = "full") %>%
@@ -77,7 +79,7 @@ all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80)) -> train_dat
 all_dat %>% filter(!row_id %in% train_dat$row_id) -> test_dat
 ```
 
-```{r, echo = FALSE}
+```{r echo = FALSE}
 all_dat <- readRDS("/Users/Fennon/Desktop/My Blog/projects/ema_sma_cross/all_dat.rds")
 
 all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80)) -> train_dat
@@ -88,7 +90,7 @@ all_dat %>% filter(!row_id %in% train_dat$row_id) -> test_dat
 
 Calculate EMAs and SMA over all desired time windows.
 
-```{r, message = FALSE, warning = FALSE}
+```{r message = FALSE, warning = FALSE}
 train_dat %>%
   mutate(EMA10 = EMA(close, n = 10)
          , EMA20 = EMA(close, n = 20)
@@ -100,7 +102,7 @@ train_dat %>%
 
 Convert data format from wide to long.
 
-```{r, warning = FALSE}
+```{r warning = FALSE}
 train_dat_w_mas %>%
   select(-row_id) %>% 
   gather("var", "value", 2:8) -> train_dat_w_mas_long
@@ -109,7 +111,7 @@ train_dat_w_mas %>%
 
 Plot daily close price and moving averages.
 
-```{r, warning = FALSE}
+```{r warning = FALSE}
 train_dat_w_mas_long %>% 
   filter(!var %in% c("open")) %>% 
   ggplot(aes(x=timestamp, y=value, color = var)) +
@@ -126,7 +128,7 @@ train_dat_w_mas_long %>%
 
 Wow, what a clear chart...To better see the EMA/SMA relationship, here's a closer look at the first couple of years.
 
-```{r, echo = FALSE, warning = FALSE}
+```{r echo = FALSE, warning = FALSE}
 train_dat_w_mas_long %>% 
   filter(!var %in% c("open")
          , timestamp <= "2002-01-01" ) %>% 
@@ -149,8 +151,385 @@ Buy/sell decisions are made as follows:
 * Buy if EMA > SMA (unless I bought already)
 * Sell if EMA < SMA (unless I sold already)
 
-We'll encode the decisions in two passes for each EMA/SMA pair: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure we don't buy again if the last action was to buy, and I don't sell again if the last action was to sell. For each decision, the trade is entered or exited on the next day's open.
+We'll encode the decisions in two passes for each EMA/SMA crossover algo strategy: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure we don't buy again if the last action was to buy, and I don't sell again if the last action was to sell. For each decision, the trade is entered or exited on the next day's open.
+
+```{r}
+train_dat_w_mas %>% 
+  # Buy/Sell signal
+  mutate(signal10 = case_when(EMA10 > SMA50 ~ "buy"
+                            , EMA10 < SMA50 ~ "sell")
+         , signal20 = case_when(EMA20 > SMA50 ~ "buy"
+                              , EMA20 < SMA50 ~ "sell")
+         , signal30 = case_when(EMA30 > SMA50 ~ "buy"
+                              , EMA30 < SMA50 ~ "sell")
+         , signal40 = case_when(EMA40 > SMA50 ~ "buy"
+                              , EMA40 < SMA50 ~ "sell")
+         
+         # Create lagging indicator for action
+         , previous_signal10 = lag(signal10, 1)
+         , previous_signal20 = lag(signal20, 1)
+         , previous_signal30 = lag(signal30, 1)
+         , previous_signal40 = lag(signal40, 1)
+         
+         # Encode hold as any time current and last action are the same
+         # since we don't want to keep buying/selling
+         , decision10 = case_when(signal10 == previous_signal10 ~ "hold"
+                                , TRUE ~ signal10)
+         , decision20 = case_when(signal20 == previous_signal20 ~ "hold"
+                                , TRUE ~ signal20)
+         , decision30 = case_when(signal30 == previous_signal30 ~ "hold"
+                                , TRUE ~ signal30)
+         , decision40 = case_when(signal40 == previous_signal40 ~ "hold"
+                                , TRUE ~ signal40)) -> all_trades
+```
+
+Extract the periods when we would have bought or sold. 
+```{r}
+# EMA10 / SMA50
+all_trades %>% 
+  filter(decision10 %in% c("buy", "sell")) %>% 
+  select(row_id, timestamp, open, close, EMA10, SMA50, decision = decision10) -> trades10
+
+# EMA20 / SMA50
+all_trades %>% 
+  filter(decision20 %in% c("buy", "sell")) %>% 
+  select(row_id, timestamp, open, close, EMA20, SMA50, decision = decision20) -> trades20
+
+# EMA30 / SMA50
+all_trades %>% 
+  filter(decision30 %in% c("buy", "sell")) %>% 
+  select(row_id, timestamp, open, close, EMA30, SMA50, decision = decision30) -> trades30
+
+# EMA40 / SMA50
+all_trades %>% 
+  filter(decision40 %in% c("buy", "sell")) %>% 
+  select(row_id, timestamp, open, close, EMA40, SMA50, decision = decision40) -> trades40
+```
+
+Let's take a look at the EMA10/SMA50 trade decisions.
+```{r}
+head(trades10, 5)
+```
+
+# Visualizing Algorithm Decisions
+
+We'll visualize trading decisions by plotting them as vertical intercept lines over the graph (<span style="color:green">green</span> = buy, <span style="color:red">red</span> = sell). The first couple years of trade decisions for each EMA/SMA pair shown below.
+
+```{r echo = FALSE}
+train_dat_w_mas_long %>%
+  filter(var %in% c("close", "EMA10", "SMA50")) %>% 
+  filter(timestamp < "2002-01-01") %>%
+  ggplot(aes(x=timestamp, y=value, color = var)) +
+  geom_line(aes(color = var, size = var)) +
+  scale_color_manual(values = c("black", "orange", "blue")) +
+  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+  xlab("Date") +
+  ylab("Close") +
+  geom_vline(data = trades10 %>% filter(decision == "buy", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "green3",
+             linetype="dashed") +
+  geom_vline(data = trades10 %>% filter(decision == "sell", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "red") +
+  theme_classic() +
+  theme(legend.title = element_blank()) +
+  ggtitle("EMA10") -> plot_ema10
+
+train_dat_w_mas_long %>%
+  filter(var %in% c("close", "EMA20", "SMA50")) %>% 
+  filter(timestamp < "2002-01-01") %>%
+  ggplot(aes(x=timestamp, y=value, color = var)) +
+  geom_line(aes(color = var, size = var)) +
+  scale_color_manual(values = c("black", "green", "blue")) +
+  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+  xlab("Date") +
+  ylab("Close") +
+  geom_vline(data = trades20 %>% filter(decision == "buy", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "green3",
+             linetype="dashed") +
+  geom_vline(data = trades20 %>% filter(decision == "sell", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "red") +
+  theme_classic() +
+  theme(legend.title = element_blank()) +
+  ggtitle("EMA20") -> plot_ema20
+
+train_dat_w_mas_long %>%
+  filter(var %in% c("close", "EMA30", "SMA50")) %>%
+  filter(timestamp < "2002-01-01") %>%
+  ggplot(aes(x=timestamp, y=value, color = var)) +
+  geom_line(aes(color = var, size = var)) +
+  scale_color_manual(values = c("black", "turquoise", "blue")) +
+  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+  xlab("Date") +
+  ylab("Close") +
+  geom_vline(data = trades30 %>% filter(decision == "buy", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "green3",
+             linetype="dashed") +
+  geom_vline(data = trades30 %>% filter(decision == "sell", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "red") +
+  theme_classic() +
+  theme(legend.title = element_blank()) +
+  ggtitle("EMA30") -> plot_ema30
+
+train_dat_w_mas_long %>%
+  filter(var %in% c("close", "EMA40", "SMA50")) %>%
+  filter(timestamp < "2002-01-01") %>% 
+  ggplot(aes(x=timestamp, y=value, color = var)) +
+  geom_line(aes(color = var, size = var)) +
+  scale_color_manual(values = c("black", "magenta", "blue")) +
+  scale_size_manual(values = c(0.5, 0.5, 0.5)) +
+  scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+  xlab("Date") +
+  ylab("Close") +
+  geom_vline(data = trades40 %>% filter(decision == "buy", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "green3",
+             linetype="dashed") +
+  geom_vline(data = trades40 %>% filter(decision == "sell", timestamp < "2002-01-01"),
+             aes(xintercept = timestamp),
+             col = "red") +
+  theme_classic() +
+  theme(legend.title = element_blank()) +
+  ggtitle("EMA40") -> plot_ema40
+```
+
+```{r echo = FALSE, fig.width = 8.5, fig.height = 6}
+grid.arrange(plot_ema10, plot_ema20, plot_ema30, plot_ema40, nrow = 2)
+```
+
+# Simulate Backtest
+
+We'll calculate profit/loss of each EMA/SMA algo. Let's use EMA10/SMA50 trades (trade10) as an example to see how we re-format the data for the backtest. First, we create a dataset of buy decisions, give each trade a trade_id, and join back to the entire train dataset to get the next day's open (our actual trade price). Second, we do the same for sell decisions, giving each trade the same trade_id as its corresponding buy decision. And third, we join the two datasets, with each row representing a roundtrip trade, and are now ready to calculate profit/loss.
+
+```{r echo = FALSE}
+# EMA10
+trades10 %>% 
+  filter(decision == "buy") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>% 
+  inner_join(train_dat, by=c("next_id"="row_id")) %>% 
+  select(trade_id, row_id, buy_timestamp = timestamp.y, buy_price = open.y) -> trades10_buy
+
+trades10 %>%
+  filter(decision == "sell") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>%
+  inner_join(train_dat, by=c("next_id"="row_id")) %>%
+  select(trade_id, row_id, sell_timestamp = timestamp.y, sell_price = open.y) -> trades10_sell
+
+trades10_buy %>%
+  inner_join(trades10_sell, by=c("trade_id" = "trade_id")) -> trades10_ready
+
+# EMA20
+trades20 %>% 
+  filter(decision == "buy") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>% 
+  inner_join(train_dat, by=c("next_id"="row_id")) %>% 
+  select(trade_id, row_id, buy_timestamp = timestamp.y, buy_price = open.y) -> trades20_buy
+
+trades20 %>%
+  filter(decision == "sell") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>%
+  inner_join(train_dat, by=c("next_id"="row_id")) %>%
+  select(trade_id, row_id, sell_timestamp = timestamp.y, sell_price = open.y) -> trades20_sell
+
+trades20_buy %>%
+  inner_join(trades20_sell, by=c("trade_id" = "trade_id")) -> trades20_ready
+
+# EMA30
+trades30 %>% 
+  filter(decision == "buy") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>% 
+  inner_join(train_dat, by=c("next_id"="row_id")) %>% 
+  select(trade_id, row_id, buy_timestamp = timestamp.y, buy_price = open.y) -> trades30_buy
+
+trades30 %>%
+  filter(decision == "sell") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>%
+  inner_join(train_dat, by=c("next_id"="row_id")) %>%
+  select(trade_id, row_id, sell_timestamp = timestamp.y, sell_price = open.y) -> trades30_sell
+
+trades30_buy %>%
+  inner_join(trades30_sell, by=c("trade_id" = "trade_id")) -> trades30_ready
+
+# EMA40
+trades40 %>% 
+  filter(decision == "buy") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>% 
+  inner_join(train_dat, by=c("next_id"="row_id")) %>% 
+  select(trade_id, row_id, buy_timestamp = timestamp.y, buy_price = open.y) -> trades40_buy
+
+trades40 %>%
+  filter(decision == "sell") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>%
+  inner_join(train_dat, by=c("next_id"="row_id")) %>%
+  select(trade_id, row_id, sell_timestamp = timestamp.y, sell_price = open.y) -> trades40_sell
+
+trades40_buy %>%
+  inner_join(trades40_sell, by=c("trade_id" = "trade_id")) -> trades40_ready
 
 
+trades_ready <- list(trades10_ready, trades20_ready, trades30_ready, trades40_ready)
+names(trades_ready) <- c("EMA10", "EMA20", "EMA30", "EMA40")
+```
 
+
+```{r}
+trades10 %>% 
+  filter(decision == "buy") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>% 
+  inner_join(train_dat, by=c("next_id"="row_id")) %>% 
+  select(trade_id, buy_timestamp = timestamp.y, buy_price = open.y) -> trades10_buy
+
+trades10 %>%
+  filter(decision == "sell") %>% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %>%
+  inner_join(train_dat, by=c("next_id"="row_id")) %>%
+  select(trade_id, sell_timestamp = timestamp.y, sell_price = open.y) -> trades10_sell
+
+trades10_buy %>%
+  inner_join(trades10_sell, by=c("trade_id" = "trade_id")) %>% 
+  select(trade_id, buy_timestamp, buy_price, sell_timestamp, sell_price) %>% 
+  as.data.frame() -> trades10_ready
+
+head(trades10_ready)
+```
+
+We repeat this process for each of the other EMA/SMA algos and create a list of datasets of each algo's trades (trade_ready). We then loop through each dataset, loop through all trades within, and calculate profit/loss. If the account value ever reaches <$0 (aka "ACCOUNT BLOWN!"), the backtest stops.
+
+```{r}
+
+# initial investment
+account <- 10000
+
+# dump all trades + info here
+trade_log <- data.frame(cross_strat = as.character()
+                      , trade_n = as.numeric()
+                      , shares = as.numeric()
+                      , p_l = as.numeric()
+                      , capital = as.numeric())
+
+for(i in 1:length(names(trades_ready))){
+  
+  # grab trades for EMA/SMA crossover algo strategy (cross_strat)
+  trades_ready_slim <- trades_ready[[i]]
+  cross_strat <- names(trades_ready)[i]
+  
+  for(j in 1:nrow(trades_ready_slim)){
+    
+    # first trade
+    if(j == 1){
+      
+      trade_n <- j
+      shares <- floor(account/trades_ready_slim$buy_price[j])
+      p_l <- (trades_ready_slim$sell_price[j]-trades_ready_slim$buy_price[j])*shares
+      capital <- account+p_l
+      
+      log_entry<-cbind.data.frame(cross_strat, trade_n, shares, p_l, capital)
+      
+      trade_log %>%
+        rbind(log_entry) -> trade_log
+      
+    }
+    
+    # all other trades
+    if(j > 1){
+      
+      if(trade_log$capital[j-1]>0){
+        
+        trade_n <- j
+        shares <- floor(as.numeric(trade_log$capital[j-1])/trades_ready_slim$buy_price[j])
+        p_l <- (trades_ready_slim$sell_price[j]-trades_ready_slim$buy_price[j])*shares
+        capital <- as.numeric(trade_log$capital[j-1])+p_l
+        
+        log_entry <- cbind.data.frame(cross_strat, trade_n, shares, p_l, capital)
+        
+        trade_log %>%
+          rbind(log_entry) -> trade_log
+        
+      }
+      
+      # worst case scenario
+      if(trade_log$capital[j-1]<=0){
+        stop("ACCOUNT BLOWN!")
+        
+      }
+      
+    }
+    
+  }
+  
+}
+
+```
+
+With all trades now analyzed, there's only one thing left to do: calculate ROI and compare to benchmark Buy & Hold strategy.
+
+```{r}
+trade_log %>% 
+  group_by(cross_strat) %>% 
+  summarise(max_n = max(trade_n)) %>% 
+  ungroup() %>% 
+  inner_join(trade_log, by = c("cross_strat")) %>% 
+  filter(trade_n == max_n) %>% 
+  mutate(ROI = percent((capital - account)/account)) %>% 
+  select(cross_strat, ROI) -> algo_roi
+
+# benchmark strat
+train_dat %>% 
+  filter(row_id == 1) %>% 
+  select(-close) -> bh_entry
+
+train_dat %>% 
+  filter(row_id == nrow(train_dat)) %>% 
+  mutate(row_id = 1) %>% 
+  select(-open) -> bh_exit
+
+bh_entry %>% 
+  inner_join (bh_exit, by = c("row_id")) %>% 
+  mutate(cross_strat = "Buy & Hold"
+         , trade_n = 1
+         , shares = floor(account/open)
+         , p_l = (close-open)*shares
+         , ROI = percent(p_l/account)) %>% 
+  select(cross_strat, ROI) -> bh_roi
+
+# all together now
+algo_roi %>% 
+  rbind(bh_roi) %>% 
+  as.data.frame() -> all_roi_train
+
+all_roi_train
+```
+
+The good news, two EMA/SMA algos produced positive returns and the other two produce minimal negative returns! The bad news, Buy & Hold **crushed** our algos' performances. Oof. 
+
+Re-running the backtest on our **Test Set (out-of-sample)** produced significantly *worse results*. Double oof!
+
+```{r, echo = FALSE}
+all_roi_test <- readRDS("/Users/Fennon/Desktop/My Blog/projects/ema_sma_cross/all_roi_test.rds")
+all_roi_test <- as.data.frame(all_roi_test)
+```
+
+```{r, echo = FALSE}
+all_roi_test
+```
+
+Damn, who would have thought Buy & Hold would be so hard to beat? /s
 

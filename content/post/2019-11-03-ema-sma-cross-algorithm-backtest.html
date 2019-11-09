@@ -1,9 +1,9 @@
 ---
-title: EMA SMA Cross Algorithm & Backtest
+title: EMA/SMA Cross Algorithm & Backtest
 author: FW
 date: '2019-11-03'
 slug: ema-sma-cross-algorithm-backtest
-categories: [Fintech]
+categories: [Finance]
 tags:
   - r
   - algotrading
@@ -15,7 +15,7 @@ disableComments: no
 <p>This algorithm is based on the “moving average crossover” strategy. Traditionally, this strategy involves taking two moving averages – a “slow” one that averages over a longer time window and a “fast” one that averages over a shorter time window – and buy/sell based on when the two moving averages crossover.</p>
 <p>I used a 50-day simple moving average (SMA) as the “slow” one and 10, 20, 30, and 40-day exponential moving averages (EMA) as the fast ones. For each SMA/EMA pair, I bought when the EMA crossed above the SMA and sold when the EMA crossed below. I decided to trade <strong>SPY</strong>, the SPDR S&amp;P500 ETF. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. <strong>However, trade at your own risk.</strong> Neither I, nor your parents, nor Jesus are responsible for your financial decisions.</p>
 <p>To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.</p>
-<p>The algorithm was trained (in-sample) and tested (out-sample) on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.</p>
+<p>The algorithm was trained (in-sample) and tested (out-of-sample) on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.</p>
 <div id="assumptions" class="section level2">
 <h2>Assumptions</h2>
 <ul>
@@ -40,10 +40,10 @@ library(lubridate)
 library(alphavantager)
 library(scales)</code></pre>
 <p>Set Alphavantager key.</p>
-<pre class="r"><code># av_api_key(&quot;my_key_goes_here&quot;))</code></pre>
+<pre class="r"><code>av_api_key(&quot;my_key_goes_here&quot;)</code></pre>
 </div>
 <div id="get-historical-etf-data" class="section level1">
-<h1>Get historical ETF data</h1>
+<h1>Get Historical ETF Data</h1>
 <p>Get all available daily price data and split into train and test sets.</p>
 <pre class="r"><code>av_get(symbol = &quot;SPY&quot;
        , av_fun = &quot;TIME_SERIES_DAILY_ADJUSTED&quot;
@@ -92,5 +92,210 @@ all_dat %&gt;% filter(!row_id %in% train_dat$row_id) -&gt; test_dat</code></pre>
 <li>Buy if EMA &gt; SMA (unless I bought already)</li>
 <li>Sell if EMA &lt; SMA (unless I sold already)</li>
 </ul>
-<p>We’ll encode the decisions in two passes for each EMA/SMA pair: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure we don’t buy again if the last action was to buy, and I don’t sell again if the last action was to sell. For each decision, the trade is entered or exited on the next day’s open.</p>
+<p>We’ll encode the decisions in two passes for each EMA/SMA crossover algo strategy: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure we don’t buy again if the last action was to buy, and I don’t sell again if the last action was to sell. For each decision, the trade is entered or exited on the next day’s open.</p>
+<pre class="r"><code>train_dat_w_mas %&gt;% 
+  # Buy/Sell signal
+  mutate(signal10 = case_when(EMA10 &gt; SMA50 ~ &quot;buy&quot;
+                            , EMA10 &lt; SMA50 ~ &quot;sell&quot;)
+         , signal20 = case_when(EMA20 &gt; SMA50 ~ &quot;buy&quot;
+                              , EMA20 &lt; SMA50 ~ &quot;sell&quot;)
+         , signal30 = case_when(EMA30 &gt; SMA50 ~ &quot;buy&quot;
+                              , EMA30 &lt; SMA50 ~ &quot;sell&quot;)
+         , signal40 = case_when(EMA40 &gt; SMA50 ~ &quot;buy&quot;
+                              , EMA40 &lt; SMA50 ~ &quot;sell&quot;)
+         
+         # Create lagging indicator for action
+         , previous_signal10 = lag(signal10, 1)
+         , previous_signal20 = lag(signal20, 1)
+         , previous_signal30 = lag(signal30, 1)
+         , previous_signal40 = lag(signal40, 1)
+         
+         # Encode hold as any time current and last action are the same
+         # since we don&#39;t want to keep buying/selling
+         , decision10 = case_when(signal10 == previous_signal10 ~ &quot;hold&quot;
+                                , TRUE ~ signal10)
+         , decision20 = case_when(signal20 == previous_signal20 ~ &quot;hold&quot;
+                                , TRUE ~ signal20)
+         , decision30 = case_when(signal30 == previous_signal30 ~ &quot;hold&quot;
+                                , TRUE ~ signal30)
+         , decision40 = case_when(signal40 == previous_signal40 ~ &quot;hold&quot;
+                                , TRUE ~ signal40)) -&gt; all_trades</code></pre>
+<p>Extract the periods when we would have bought or sold.</p>
+<pre class="r"><code># EMA10 / SMA50
+all_trades %&gt;% 
+  filter(decision10 %in% c(&quot;buy&quot;, &quot;sell&quot;)) %&gt;% 
+  select(row_id, timestamp, open, close, EMA10, SMA50, decision = decision10) -&gt; trades10
+
+# EMA20 / SMA50
+all_trades %&gt;% 
+  filter(decision20 %in% c(&quot;buy&quot;, &quot;sell&quot;)) %&gt;% 
+  select(row_id, timestamp, open, close, EMA20, SMA50, decision = decision20) -&gt; trades20
+
+# EMA30 / SMA50
+all_trades %&gt;% 
+  filter(decision30 %in% c(&quot;buy&quot;, &quot;sell&quot;)) %&gt;% 
+  select(row_id, timestamp, open, close, EMA30, SMA50, decision = decision30) -&gt; trades30
+
+# EMA40 / SMA50
+all_trades %&gt;% 
+  filter(decision40 %in% c(&quot;buy&quot;, &quot;sell&quot;)) %&gt;% 
+  select(row_id, timestamp, open, close, EMA40, SMA50, decision = decision40) -&gt; trades40</code></pre>
+<p>Let’s take a look at the EMA10/SMA50 trade decisions.</p>
+<pre class="r"><code>head(trades10, 5)</code></pre>
+<pre><code>## # A tibble: 5 x 7
+##   row_id timestamp   open close EMA10 SMA50 decision
+##    &lt;int&gt; &lt;date&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;   
+## 1     50 2000-01-12  145.  143.  144.  142. buy     
+## 2     60 2000-01-27  142.  140.  143.  143. sell    
+## 3     95 2000-03-17  146.  147.  141.  141. buy     
+## 4    128 2000-05-04  142   142.  144.  144. sell    
+## 5    151 2000-06-07  147.  147.  145.  145. buy</code></pre>
+</div>
+<div id="visualizing-algorithm-decisions" class="section level1">
+<h1>Visualizing Algorithm Decisions</h1>
+<p>We’ll visualize trading decisions by plotting them as vertical intercept lines over the graph (<span style="color:green">green</span> = buy, <span style="color:red">red</span> = sell). The first couple years of trade decisions for each EMA/SMA pair shown below.</p>
+<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-14-1.png" width="816" /></p>
+</div>
+<div id="simulate-backtest" class="section level1">
+<h1>Simulate Backtest</h1>
+<p>We’ll calculate profit/loss of each EMA/SMA algo. Let’s use EMA10/SMA50 trades (trade10) as an example to see how we re-format the data for the backtest. First, we create a dataset of buy decisions, give each trade a trade_id, and join back to the entire train dataset to get the next day’s open (our actual trade price). Second, we do the same for sell decisions, giving each trade the same trade_id as its corresponding buy decision. And third, we join the two datasets, with each row representing a roundtrip trade, and are now ready to calculate profit/loss.</p>
+<pre class="r"><code>trades10 %&gt;% 
+  filter(decision == &quot;buy&quot;) %&gt;% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %&gt;% 
+  inner_join(train_dat, by=c(&quot;next_id&quot;=&quot;row_id&quot;)) %&gt;% 
+  select(trade_id, buy_timestamp = timestamp.y, buy_price = open.y) -&gt; trades10_buy
+
+trades10 %&gt;%
+  filter(decision == &quot;sell&quot;) %&gt;% 
+  mutate(next_id = row_id + 1
+         , trade_id = row_number()) %&gt;%
+  inner_join(train_dat, by=c(&quot;next_id&quot;=&quot;row_id&quot;)) %&gt;%
+  select(trade_id, sell_timestamp = timestamp.y, sell_price = open.y) -&gt; trades10_sell
+
+trades10_buy %&gt;%
+  inner_join(trades10_sell, by=c(&quot;trade_id&quot; = &quot;trade_id&quot;)) %&gt;% 
+  select(trade_id, buy_timestamp, buy_price, sell_timestamp, sell_price) %&gt;% 
+  as.data.frame() -&gt; trades10_ready
+
+head(trades10_ready)</code></pre>
+<pre><code>##   trade_id buy_timestamp buy_price sell_timestamp sell_price
+## 1        1    2000-01-13   144.469     2000-01-28    139.438
+## 2        2    2000-03-20   146.875     2000-05-05    141.063
+## 3        3    2000-06-08   147.500     2000-08-01    143.625
+## 4        4    2000-08-15   149.344     2000-09-19    145.125
+## 5        5    2001-01-25   136.250     2001-02-16    131.000
+## 6        6    2001-04-26   123.730     2001-06-19    122.380</code></pre>
+<p>We repeat this process for each of the other EMA/SMA algos and create a list of datasets of each algo’s trades (trade_ready). We then loop through each dataset, loop through all trades within, and calculate profit/loss. If the account value ever reaches &lt;$0 (aka “ACCOUNT BLOWN!”), the backtest stops.</p>
+<pre class="r"><code># initial investment
+account &lt;- 10000
+
+# dump all trades + info here
+trade_log &lt;- data.frame(cross_strat = as.character()
+                      , trade_n = as.numeric()
+                      , shares = as.numeric()
+                      , p_l = as.numeric()
+                      , capital = as.numeric())
+
+for(i in 1:length(names(trades_ready))){
+  
+  # grab trades for EMA/SMA crossover algo strategy (cross_strat)
+  trades_ready_slim &lt;- trades_ready[[i]]
+  cross_strat &lt;- names(trades_ready)[i]
+  
+  for(j in 1:nrow(trades_ready_slim)){
+    
+    # first trade
+    if(j == 1){
+      
+      trade_n &lt;- j
+      shares &lt;- floor(account/trades_ready_slim$buy_price[j])
+      p_l &lt;- (trades_ready_slim$sell_price[j]-trades_ready_slim$buy_price[j])*shares
+      capital &lt;- account+p_l
+      
+      log_entry&lt;-cbind.data.frame(cross_strat, trade_n, shares, p_l, capital)
+      
+      trade_log %&gt;%
+        rbind(log_entry) -&gt; trade_log
+      
+    }
+    
+    # all other trades
+    if(j &gt; 1){
+      
+      if(trade_log$capital[j-1]&gt;0){
+        
+        trade_n &lt;- j
+        shares &lt;- floor(as.numeric(trade_log$capital[j-1])/trades_ready_slim$buy_price[j])
+        p_l &lt;- (trades_ready_slim$sell_price[j]-trades_ready_slim$buy_price[j])*shares
+        capital &lt;- as.numeric(trade_log$capital[j-1])+p_l
+        
+        log_entry &lt;- cbind.data.frame(cross_strat, trade_n, shares, p_l, capital)
+        
+        trade_log %&gt;%
+          rbind(log_entry) -&gt; trade_log
+        
+      }
+      
+      # worst case scenario
+      if(trade_log$capital[j-1]&lt;=0){
+        stop(&quot;ACCOUNT BLOWN!&quot;)
+        
+      }
+      
+    }
+    
+  }
+  
+}</code></pre>
+<p>With all trades now analyzed, there’s only one thing left to do: calculate ROI and compare to benchmark Buy &amp; Hold strategy.</p>
+<pre class="r"><code>trade_log %&gt;% 
+  group_by(cross_strat) %&gt;% 
+  summarise(max_n = max(trade_n)) %&gt;% 
+  ungroup() %&gt;% 
+  inner_join(trade_log, by = c(&quot;cross_strat&quot;)) %&gt;% 
+  filter(trade_n == max_n) %&gt;% 
+  mutate(ROI = percent((capital - account)/account)) %&gt;% 
+  select(cross_strat, ROI) -&gt; algo_roi
+
+# benchmark strat
+train_dat %&gt;% 
+  filter(row_id == 1) %&gt;% 
+  select(-close) -&gt; bh_entry
+
+train_dat %&gt;% 
+  filter(row_id == nrow(train_dat)) %&gt;% 
+  mutate(row_id = 1) %&gt;% 
+  select(-open) -&gt; bh_exit
+
+bh_entry %&gt;% 
+  inner_join (bh_exit, by = c(&quot;row_id&quot;)) %&gt;% 
+  mutate(cross_strat = &quot;Buy &amp; Hold&quot;
+         , trade_n = 1
+         , shares = floor(account/open)
+         , p_l = (close-open)*shares
+         , ROI = percent(p_l/account)) %&gt;% 
+  select(cross_strat, ROI) -&gt; bh_roi
+
+# all together now
+algo_roi %&gt;% 
+  rbind(bh_roi) %&gt;% 
+  as.data.frame() -&gt; all_roi_train
+
+all_roi_train</code></pre>
+<pre><code>##   cross_strat    ROI
+## 1       EMA10  2.98%
+## 2       EMA20  3.81%
+## 3       EMA30  0.18%
+## 4       EMA40 -0.46%
+## 5  Buy &amp; Hold  54.3%</code></pre>
+<p>The good news, two EMA/SMA algos produced positive returns and the other two produce minimal negative returns! The bad news, Buy &amp; Hold <strong>crushed</strong> our algos’ performances. Oof.</p>
+<p>Re-running the backtest on our <strong>Test Set (out-of-sample)</strong> produced significantly <em>worse results</em>. Double oof!</p>
+<pre><code>##   cross_strat     ROI
+## 1       EMA10 -21.60%
+## 2       EMA20 -23.94%
+## 3       EMA30 -24.80%
+## 4       EMA40 -24.08%
+## 5  Buy &amp; Hold   45.2%</code></pre>
+<p>Damn, who would have thought Buy &amp; Hold would be so hard to beat? /s</p>
 </div>
