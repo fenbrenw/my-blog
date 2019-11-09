@@ -16,20 +16,21 @@ I used a 50-day simple moving average (SMA) as the "slow" one and 10, 20, 30, an
 
 To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.
 
-The algorithm was trained and tested on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.
+The algorithm was trained (in-sample) and tested (out-sample) on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.
 
 ## Assumptions
 
 * Starting investment of $10,000 USD
 * Long-only strategy
-* Trade decisions based on daily close price, but trade entry/exit based on next day open
-* Train set = data from 1999 to 2015
-* Test set = data from 2015 to 2019
+* No slippage, no commission
+* Train Set: data from 1999 to 2015
+* Test Set: data from 2015 to 2019
 * Strategy to beat: buy and hold over entire time period
 
-**TL;DR: My algorithm did not make money and I'm still not a billionaire :( **
+**TL;DR: My algorithm did not make money and I'm still poor :( **
 
 ***
+# Setup
 
 Load libraries.
 
@@ -65,19 +66,22 @@ av_api_key("ZVWHBIOOHGCNKHD3")
 
 Get all available daily price data and split into train and test sets.
 
-```{r, message = FALSE, warning = FALSE}
-# av_get(symbol = "SPY"
-#        , av_fun = "TIME_SERIES_DAILY_ADJUSTED"
-#        , outputsize = "full") %>%
-#   mutate(row_id = row_number()) %>%
-#   select(row_id, timestamp, open, close) -> all_dat
+```{r, eval = FALSE}
+av_get(symbol = "SPY"
+       , av_fun = "TIME_SERIES_DAILY_ADJUSTED"
+       , outputsize = "full") %>%
+  mutate(row_id = row_number()) %>%
+  select(row_id, timestamp, open, close) -> all_dat
 
-# train_dat <- all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80))
-# test_dat <- all_dat %>% filter(!row_id %in% train_dat$row_id)
+all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80)) -> train_dat
+all_dat %>% filter(!row_id %in% train_dat$row_id) -> test_dat
 ```
 
 ```{r, echo = FALSE}
 all_dat <- readRDS("/Users/Fennon/Desktop/My Blog/projects/ema_sma_cross/all_dat.rds")
+```
+
+```{r, eval = TRUE}
 train_dat <- all_dat %>% filter(row_id <= floor(nrow(all_dat)*.80))
 test_dat <- all_dat %>% filter(!row_id %in% train_dat$row_id)
 ```
@@ -123,7 +127,7 @@ train_dat_w_mas_long %>%
   ggtitle("SPY with Moving Averages")
 ```
 
-Oof, that's a lot of data to take in. To better see the EMA/SMA relationship, here's a closer look at the couple of years.
+Wow, what a clear chart...To better see the EMA/SMA relationship, here's a closer look at the first couple of years.
 
 ```{r, echo = FALSE, warning = FALSE}
 train_dat_w_mas_long %>% 
@@ -148,6 +152,8 @@ Buy/sell decisions are made as follows:
 * Buy if EMA > SMA (unless I bought already)
 * Sell if EMA < SMA (unless I sold already)
 
-I'll encode the decisions in two passes for each EMA/SMA pair: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure I don't buy again if the last action was to buy, and I don't sell again if the last action was to sell. 
+We'll encode the decisions in two passes for each EMA/SMA pair: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure we don't buy again if the last action was to buy, and I don't sell again if the last action was to sell. For each decision, the trade is entered or exited on the next day's open.
+
+
 
 

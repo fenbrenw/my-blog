@@ -65,19 +65,22 @@
 <p>This algorithm is based on the “moving average crossover” strategy. Traditionally, this strategy involves taking two moving averages – a “slow” one that averages over a longer time window and a “fast” one that averages over a shorter time window – and buy/sell based on when the two moving averages crossover.</p>
 <p>I used a 50-day simple moving average (SMA) as the “slow” one and 10, 20, 30, and 40-day exponential moving averages (EMA) as the fast ones. For each SMA/EMA pair, I bought when the EMA crossed above the SMA and sold when the EMA crossed below. I decided to trade <strong>SPY</strong>, the SPDR S&amp;P500 ETF. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. <strong>However, trade at your own risk.</strong> Neither I, nor your parents, nor Jesus are responsible for your financial decisions.</p>
 <p>To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.</p>
-<p>The algorithm was trained and tested on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.</p>
+<p>The algorithm was trained (in-sample) and tested (out-sample) on a 80/20 split of all available daily price data through alphavantager at the time of this analysis. This covered approximately 20 years, from 1999 to 2019.</p>
 <div id="assumptions" class="section level2">
 <h2>Assumptions</h2>
 <ul>
 <li>Starting investment of $10,000 USD</li>
 <li>Long-only strategy</li>
-<li>Trade decisions based on daily close price, but trade entry/exit based on next day open</li>
-<li>Train set = data from 1999 to 2015</li>
-<li>Test set = data from 2015 to 2019</li>
+<li>No slippage, no commission</li>
+<li>Train Set: data from 1999 to 2015</li>
+<li>Test Set: data from 2015 to 2019</li>
 <li>Strategy to beat: buy and hold over entire time period</li>
 </ul>
-<p><strong>TL;DR: My algorithm did not make money and I’m still not a billionaire :( </strong></p>
+<p><strong>TL;DR: My algorithm did not make money and I’m still poor :( </strong></p>
 <hr />
+</div>
+<div id="setup" class="section level1">
+<h1>Setup</h1>
 <p>Load libraries.</p>
 <pre><code>library(tidyverse)
 library(tidyquant)
@@ -92,14 +95,16 @@ library(scales)</code></pre>
 <div id="get-historical-etf-data" class="section level1">
 <h1>Get historical ETF data</h1>
 <p>Get all available daily price data and split into train and test sets.</p>
-<pre class="r"><code># av_get(symbol = &quot;SPY&quot;
-#        , av_fun = &quot;TIME_SERIES_DAILY_ADJUSTED&quot;
-#        , outputsize = &quot;full&quot;) %&gt;%
-#   mutate(row_id = row_number()) %&gt;%
-#   select(row_id, timestamp, open, close) -&gt; all_dat
+<pre class="r"><code>av_get(symbol = &quot;SPY&quot;
+       , av_fun = &quot;TIME_SERIES_DAILY_ADJUSTED&quot;
+       , outputsize = &quot;full&quot;) %&gt;%
+  mutate(row_id = row_number()) %&gt;%
+  select(row_id, timestamp, open, close) -&gt; all_dat
 
-# train_dat &lt;- all_dat %&gt;% filter(row_id &lt;= floor(nrow(all_dat)*.80))
-# test_dat &lt;- all_dat %&gt;% filter(!row_id %in% train_dat$row_id)</code></pre>
+all_dat %&gt;% filter(row_id &lt;= floor(nrow(all_dat)*.80)) -&gt; train_dat
+all_dat %&gt;% filter(!row_id %in% train_dat$row_id) -&gt; test_dat</code></pre>
+<pre class="r"><code>train_dat &lt;- all_dat %&gt;% filter(row_id &lt;= floor(nrow(all_dat)*.80))
+test_dat &lt;- all_dat %&gt;% filter(!row_id %in% train_dat$row_id)</code></pre>
 </div>
 <div id="moving-averages" class="section level1">
 <h1>Moving Averages</h1>
@@ -128,9 +133,9 @@ library(scales)</code></pre>
   theme(legend.title = element_blank()) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(&quot;SPY with Moving Averages&quot;)</code></pre>
-<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
-<p>Oof, that’s a lot of data to take in. To better see the EMA/SMA relationship, here’s a closer look at the couple of years.</p>
 <p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Wow, what a clear chart…To better see the EMA/SMA relationship, here’s a closer look at the first couple of years.</p>
+<p><img src="/post/2019-11-03-ema-sma-cross-algorithm-backtest_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
 </div>
 <div id="encode-buysell-signals-and-decisions" class="section level1">
 <h1>Encode buy/sell signals and decisions</h1>
@@ -139,7 +144,7 @@ library(scales)</code></pre>
 <li>Buy if EMA &gt; SMA (unless I bought already)</li>
 <li>Sell if EMA &lt; SMA (unless I sold already)</li>
 </ul>
-<p>I’ll encode the decisions in two passes for each EMA/SMA pair: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure I don’t buy again if the last action was to buy, and I don’t sell again if the last action was to sell.</p>
+<p>We’ll encode the decisions in two passes for each EMA/SMA pair: the first pass encodes the signal, and the second pass encodes the decision. Basically, the decision encoding will make sure we don’t buy again if the last action was to buy, and I don’t sell again if the last action was to sell. For each decision, the trade is entered or exited on the next day’s open.</p>
 </div>
 </main>
 
