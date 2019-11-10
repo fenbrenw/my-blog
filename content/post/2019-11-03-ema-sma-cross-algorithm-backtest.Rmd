@@ -476,6 +476,11 @@ for(i in 1:length(names(trades_ready))){
 
 ```
 
+```{r}
+head(trade_log)
+```
+
+
 With all trades now analyzed, there's only one thing left to do: calculate ROI and compare to benchmark Buy & Hold strategy.
 
 ```{r}
@@ -517,7 +522,7 @@ all_roi_train
 
 The good news, two EMA/SMA algos produced positive returns and the other two produce minimal negative returns! The bad news, Buy & Hold **crushed** our algos' performances. Oof. 
 
-Re-running the backtest on our **Test Set (out-of-sample)** produced significantly *worse results*. Double oof!
+Re-running the backtest on our Test Set (out-of-sample) produced significantly *worse results*. Double oof!
 
 ```{r, echo = FALSE}
 all_roi_test <- readRDS("/Users/Fennon/Desktop/My Blog/projects/ema_sma_cross/all_roi_test.rds")
