@@ -253,6 +253,9 @@ for(i in 1:length(names(trades_ready))){
 ## 4       EMA10       4     60 -253.140 8781.691
 ## 5       EMA10       5     64 -336.000 8445.691
 ## 6       EMA10       6     68  -91.800 8353.891</code></pre>
+</div>
+<div id="final-results" class="section level1">
+<h1>Final Results</h1>
 <p>With all trades now analyzed, there’s only one thing left to do: calculate ROI and compare to benchmark Buy &amp; Hold strategy.</p>
 <pre class="r"><code>trade_log %&gt;% 
   group_by(cross_strat) %&gt;% 
@@ -295,7 +298,7 @@ all_roi_train</code></pre>
 ## 4       EMA40 -0.46%
 ## 5  Buy &amp; Hold  54.3%</code></pre>
 <p>The good news, two EMA/SMA algos produced positive returns and the other two produce minimal negative returns! The bad news, Buy &amp; Hold <strong>crushed</strong> our algos’ performances. Oof.</p>
-<p>Re-running the backtest on our Test Set (out-of-sample) produced significantly <em>worse results</em>.</p>
+<p>Re-running the backtest on the Test Set (out-of-sample) produced significantly <em>worse</em> results for our algos, while Buy &amp; Hold continued its dominance.</p>
 <pre><code>##   cross_strat     ROI
 ## 1       EMA10 -21.60%
 ## 2       EMA20 -23.94%
