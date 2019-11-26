@@ -21,4 +21,8 @@ title: Links
 
 **[R for Data Science (Grolemund, Wickham)](http://r4ds.had.co.nz/):**  Official website for Garrett Grolemund and Hadley Wickham's awesome book. You can also buy a physical copy on **[Amazon](http://amzn.to/2aHLAQ1)**. A great guide to using dplyr and ggplot2 for data munging, analysis, and plotting.
 
+**[Alpha Vantage](https://www.alphavantage.co/):**  Free historical data source for stocks, forex, and crypto currencies.
+
+
+
 

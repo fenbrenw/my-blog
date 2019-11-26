@@ -13,4 +13,4 @@ nav_off: true
 title: About
 ---
 
-R user who enjoys analyzing financial data and making (unprofitable) trading algorithms.
+R user who enjoys analyzing financial data.
