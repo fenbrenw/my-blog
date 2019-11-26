@@ -114,7 +114,18 @@ for(i in 1:(nrow(all_dat_ath)-1)){
 <p>With all our drawdowns calculated, let’s break those down into categories – how much sell off should you wait for before buying in?: * -1% to -5% * -5% to -10% * -10% to -20% * &lt; -20%</p>
 <p>Each category is plotted below, with the max drawdown of -57% occuring during the financial crisis in 2008. Scary times…</p>
 <p><img src="/post/2019-11-24-buy-the-dip_files/figure-html/unnamed-chunk-11-1.png" width="816" /></p>
-<p>Would ya look at that: returns in each drawdown category (dd_cat) are <strong>positive</strong> over the next 20, 50, 100, and 200 trading days from drawdown.</p>
-<p>Obviously we can’t know a drawdown actually falls into one of those categories until the next ATH is in place. But the take aways is that “buying the dip”, buying into fear, can produce optimistic results. While it would be hard to get in at a “3 % correct” only for prices to sell off and additional 50%, as long as you keep buying in, the long term looks promising.</p>
-<p>Maybe Warren Buffet knows what he’s talking about.</p>
+<p>What would’ve happened if we bought in during those fear-filled drawdowns? Let’s take a look at the returns for each category over the next 20, 50, 100, and 200 days:</p>
+<pre class="rm"><code>dip_performance %&gt;% 
+  group_by(dd_cat) %&gt;% 
+  summarise(n = n()
+            , d20 = mean(d20, na.rm = TRUE)
+            , d50 = mean(d50, na.rm = TRUE)
+            , d100 = mean(d100, na.rm = TRUE)
+            , d200 = mean(d200, na.rm = TRUE)) %&gt;% 
+  ungroup() -&gt; dip_performance_sum
+
+dip_performance_sum</code></pre>
+<p>Surprisingly, buying in when others are fearful produces positive returns over the short-to-long term, with the largest return actually coming off the largest drawdowns.</p>
+<p>Obviously we can’t know a drawdown falls into one of those categories until the next ATH is in place. And it would definitely be difficult to get in at a “3% correction” only for prices to sell off an additional 50%. But the take away is that “buying the dip”, buying when others are fearful, <em>can</em> produce positive results over time.</p>
+<p>Maybe Warren Buffet knows what he’s talking about…</p>
 </div>

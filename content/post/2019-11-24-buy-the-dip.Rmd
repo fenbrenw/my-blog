@@ -233,9 +233,9 @@ all_dat %>%
 grid.arrange(plot_thresh1, plot_thresh2, plot_thresh3, plot_thresh4)
 ```
 
-Would ya look at that: returns in each drawdown category (dd_cat) are **positive** over the next 20, 50, 100, and 200 trading days from drawdown.
+What would've happened if we bought in during those fear-filled drawdowns? Let's take a look at the returns for each category over the next 20, 50, 100, and 200 days:
 
-```{rm echo = FALSE}
+```{r}
 dip_performance %>% 
   group_by(dd_cat) %>% 
   summarise(n = n()
@@ -248,6 +248,8 @@ dip_performance %>%
 dip_performance_sum
 ```
 
-Obviously we can't know a drawdown actually falls into one of those categories until the next ATH is in place. But the take aways is that "buying the dip", buying into fear, can produce optimistic results. While it would be hard to get in at a "3 % correct" only for prices to sell off and additional 50%, as long as you keep buying in, the long term looks promising.
+Surprisingly, buying in when others are fearful produces positive returns over the short-to-long term, with the largest return actually coming off the largest drawdowns.
+
+Obviously we can't know a drawdown falls into one of those categories until the next ATH is in place. And it would definitely be difficult to get in at a "3% correction" only for prices to sell off an additional 50%. But the take away is that "buying the dip", buying when others are fearful, *can* produce positive results over time. 
 
 Maybe Warren Buffet knows what he's talking about...
