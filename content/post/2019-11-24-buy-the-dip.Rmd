@@ -248,6 +248,6 @@ dip_performance %>%
 dip_performance_sum
 ```
 
-Obviously we can't know a drawdown actually falls into one of those categories until the next ATH is in place, but we still see that "buying the dip" can produce optimistic results. While it would be hard to get in at a "3 % correct" only for prices to sell off to -%50, as long as you keep buying in, things may turn around in the long term. 
+Obviously we can't know a drawdown actually falls into one of those categories until the next ATH is in place. But the take aways is that "buying the dip", buying into fear, can produce optimistic results. While it would be hard to get in at a "3 % correct" only for prices to sell off and additional 50%, as long as you keep buying in, the long term looks promising.
 
-Maybe Warren Buffet knows what he's talking about.
+Maybe Warren Buffet knows what he's talking about...
