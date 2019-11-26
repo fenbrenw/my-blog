@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Buy The Dip | My minimal Hugo website</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    <style>
+    html body, h1, h2, h3, h4, h5, h6 {font-family: Raleway, Verdana, Arial, sans-serif;}
+    main {font-family: Proxima Nova, Verdana, Arial, sans-serif;}
+    :root {--accent: #0078ff;}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Proxima%20Nova">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+
+    
+  </head>
+
+  <body>
+    <nav>
+    <ul class="menu">
+      
+      <li><a href="/">Home</a></li>
+      
+      <li><a href="/post/">Blog</a></li>
+      
+      <li><a href="/categories/">Categories</a></li>
+      
+      <li><a href="/tags/">Tags</a></li>
+      
+      <li><a href="/page/about/">About</a></li>
+      
+      <li><a href="/page/links/">Links</a></li>
+      
+    </ul>
+    <hr/>
+    </nav>
+
+
+<div class="article-meta">
+	<span class="title">Buy The Dip</span>
+	
+		<div class="meta">November 24, 2019</div>
+	
+	
+	
+		<div class="meta">
+			[ 
+			<a href='/categories/finance'>Finance</a> ]
+		</div>
+	
+	<kbd class="item-tag">
+		<a href='/tags/r'>r</a></kbd>
+	<kbd class="item-tag">
+		<a href='/tags/alpha-vantage'>alpha vantage</a></kbd>
+	
+</div>
+
+<main>
+
+
+<p>Warren Buffett once said that as an investor, it is wise to be “Fearful when others are greedy and greedy when others are fearful.”</p>
+<p>In a up trend on any timescale, a smart trader would “buy the dip” – buy any time there’s a sizeable selloff. Let’s define an “up trend” in the broadest sense: if price is making higher <strong>all time highs</strong>, it’s in an uptrend. So any time a new all time high is achieved, and price starts to slide, does buying into the selloff and fear produce positive returns?</p>
+<p>We’ll test this using <strong>SPY</strong>, the SPDR S&amp;P500 ETF designed to track the S&amp;P 500 stock market index. This ETF is very liquid, covers a broad range of stocks (so no cherry picking), and can be traded commission free by most brokerages. <strong>However, trade at your own risk.</strong> Neither I, nor your parents, nor Jesus are responsible for your financial decisions.</p>
+<p>To obtain historical ETF data, I used the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package to access the <a href="https://www.alphavantage.co/documentation/">Alpha Vantage API</a>; the <a href="https://github.com/business-science/tidyquant">tidyquant</a> package to calculate simple moving averages; and tidyverse, ggplot2, etc to wrangle and visualize data.</p>
+<p>Price data covers approximately 20 years, from 1999 to 2019.</p>
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<p>Load libraries.</p>
+<pre><code>library(tidyverse)
+library(tidyquant)
+library(reshape2)
+library(ggplot2)
+library(lubridate)
+library(alphavantager)
+library(scales)</code></pre>
+<p>Set Alphavantager key.</p>
+<pre class="r"><code>av_api_key(&quot;my_key_goes_here&quot;)</code></pre>
+</div>
+<div id="get-historical-etf-data" class="section level1">
+<h1>Get Historical ETF Data</h1>
+<p>Get all available price data.</p>
+<pre class="r"><code>av_get(symbol = &quot;SPY&quot;
+       , av_fun = &quot;TIME_SERIES_DAILY_ADJUSTED&quot;
+       , outputsize = &quot;full&quot;) %&gt;%
+  mutate(row_id = row_number()) %&gt;%
+  select(row_id, timestamp, open, close) -&gt; all_dat</code></pre>
+<p>Let’s take a look at ATHs over time.</p>
+<pre><code>## Warning: The `printer` argument is deprecated as of rlang 0.3.0.
+## This warning is displayed once per session.</code></pre>
+<pre class="r"><code>## plot all time highs
+all_dat %&gt;% 
+  ggplot(aes(x = timestamp, y = close)) +
+  geom_line() +
+  geom_point(data = all_dat_ath, aes(x = timestamp, y = close), color = &quot;green&quot;) +
+  xlab(&quot;Date&quot;) +
+  ylab(&quot;Close&quot;) +
+  theme_classic() +
+  ggtitle(&quot;SPY All Time Highs&quot;) -&gt; plot_ath
+
+plot_ath</code></pre>
+<p><img src="/post/2019-11-24-buy-the-dip_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p>The second half of the dataset has significantly more ATHs than the first. Would have prefered a more balanced universe over time, but oh well.</p>
+<p>We’ll calculate all time highs (ATH) and the time difference between consecutive ones. Let’s assume that a “dip” must consist of at least three days: all time high, min, next all time high. Therefore, we’ll filter out back-to-back days of ATHs.</p>
+<pre class="r"><code>## calc all time highs (ath) + difference between ath
+all_dat %&gt;% 
+  mutate(row_id = row_number()
+         , ath = cummax(high)) %&gt;% 
+  group_by() %&gt;% 
+  mutate(diff_ath = ath - lag(ath)) %&gt;% 
+  ungroup() %&gt;% 
+  filter(diff_ath != 0) %&gt;% 
+  mutate(diff_ts = as.numeric(timestamp - lag(timestamp))) -&gt; all_dat_ath</code></pre>
+<p>Now, I am sure there is an easier way to calculate drawdowns between two known points (like using the PerformanceAnalytics package), I like to make things challenging for myself, so we’ll calculate drawdowns as follows:</p>
+<ol style="list-style-type: decimal">
+<li>Get dates of consecutive ATH pairs.</li>
+<li>Filter original price dataset to contain all dates between those from Step 1.</li>
+<li>Calculate minimum price between ATH pairs.</li>
+<li>Subtract minimum from first ATH.</li>
+</ol>
+<pre class="r"><code>## loop through consecutive pairs of ath_ind
+drawdown_dat &lt;- data.frame(row_id = as.numeric()
+                           , drawdown = as.numeric()
+                           , drawndown_dt = as.character())
+
+for(i in 1:(nrow(all_dat_ath)-1)){
+  
+  # get timestamps of consecutive ath
+  ath1_ts &lt;- all_dat_ath[i, ]$timestamp
+  ath2_ts &lt;- all_dat_ath[i + 1, ]$timestamp
+  
+  # calc min between timestamps
+  all_dat %&gt;% 
+    filter(timestamp &gt;= ath1_ts, timestamp &lt;= ath2_ts) -&gt; intra_peak_price
+  
+  # only aths with more than 1-day in between
+  if(nrow(intra_peak_price) &gt; 2){
+    
+    ath1_line &lt;- head(intra_peak_price, 1)
+    ath2_line &lt;- tail(intra_peak_price, 1)
+    dd_line &lt;- intra_peak_price[intra_peak_price$low == min(intra_peak_price$low), ]
+    
+    intra_peak_price %&gt;% 
+      group_by() %&gt;% 
+      summarise(prior_peak = ath1_line$high
+                , valley = min(low)
+                , drawdown = ((valley - prior_peak)) / prior_peak) %&gt;% 
+      ungroup() -&gt; drawdown_tmp 
+    
+    drawdown_tmp %&gt;% 
+      inner_join(dd_line, by = c(&quot;valley&quot; = &quot;low&quot;)) %&gt;% 
+      rename(&quot;drawdown_dt&quot; = &quot;timestamp&quot;) %&gt;% 
+      select(row_id, drawdown_dt, drawdown) -&gt; drawdown_dat_add
+    
+    drawdown_dat_add %&gt;% 
+      rbind.data.frame(drawdown_dat) -&gt; drawdown_dat
+    
+    ## Doesn&#39;t non-consistent arrow direction drive you crazy?
+  }
+}</code></pre>
+<p>With all our drawdowns calculated, let’s break those down into “fear buckets” – how much sell off should you wait for before buying in?: * -1% to -5% * -5% to -10% * -10% to -20% * &lt; -20%</p>
+<p>Each category plotted below, with the max drawdown of -57% occuring during the financial crisis in 2008.</p>
+<p><img src="/post/2019-11-24-buy-the-dip_files/figure-html/unnamed-chunk-11-1.png" width="816" /></p>
+<p>Surprisingly (?), returns in each drawdown category (dd_cat) are positive over the next 20, 50, 100, and 200 trading days from the sell off minimum.</p>
+<p>Obviously we can’t know a drawdown actually falls into one of those categories until the next ATH is in place, but we still see that “buying the dip” produce optimistic results. While it would be hard to get in at a “3 % correct” only for prices to sell off to -%50, as long as you keep buying in, things may turn around in the long term.</p>
+</div>
+</main>
+
+
+	
+<nav class="post-nav">
+	<div class="post-prev">
+		<a href="/post/ema-sma-cross-algorithm-backtest/" rel="prev">
+			<span class="post-nav__caption">
+				« Older
+			</span>
+			<p class="post-nav__title-left">
+				EMA x SMA Algorithm &amp; Backtest
+			</p>
+		</a>
+	</div>
+</nav>
+
+
+
+
+
+
+
+	<h4 class="related">Related Posts</h4>
+	
+		<li>
+	<span class="date">2019/11/03</span>
+	<a href="/post/ema-sma-cross-algorithm-backtest/">EMA x SMA Algorithm &amp; Backtest</a>
+</li>
+
+	
+
+    
+
+
+<footer>
+<hr/>
+
+
+	<nav>
+		<ul class="menu">
+			
+			<li><a href="mailto:me@example.com"><i class="fa fa-envelope-o"></i></a></li>
+			
+			<li><a href="https://github.com/fenbrenw/my-blog/"><i class="fa fa-github"></i></a></li>
+			
+			<li><a href="https://www.linkedin.com/in/user-name-a123456789/"><i class="fa fa-linkedin"></i></a></li>
+			
+		</ul>
+	</nav>
+
+
+<p class="copyright text-muted">
+	&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and <a href="https://github.com/oneleaftea/milano">Milano</a>
+</p>
+
+  </footer>
+  </body>
+</html>
+

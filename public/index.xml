@@ -6,10 +6,20 @@
     <description>Recent content in homepage on My minimal Hugo website</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 03 Nov 2019 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 24 Nov 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Buy The Dip</title>
+      <link>/post/buy-the-dip/</link>
+      <pubDate>Sun, 24 Nov 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/post/buy-the-dip/</guid>
+      <description>Warren Buffett once said that as an investor, it is wise to be “Fearful when others are greedy and greedy when others are fearful.”
+In a up trend on any timescale, a smart trader would “buy the dip” – buy any time there’s a sizeable selloff. Let’s define an “up trend” in the broadest sense: if price is making higher all time highs, it’s in an uptrend. So any time a new all time high is achieved, and price starts to slide, does buying into the selloff and fear produce positive returns?</description>
+    </item>
     
     <item>
       <title>About</title>
