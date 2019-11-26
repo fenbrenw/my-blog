@@ -40,7 +40,8 @@ library(gridExtra)
 library(lubridate)
 library(alphavantager)
 library(scales)
-library(emo)
+library(knitr)
+library(kableExtra)
 ```
 
 ```
@@ -66,7 +67,7 @@ av_api_key("ZVWHBIOOHGCNKHD3")
 
 Get all available price data.
 
-```{r eval = FALSE, message = FALSE}
+```{r echo = FALSE, eval = FALSE, message = FALSE}
 av_get(symbol = "SPY"
        , av_fun = "TIME_SERIES_DAILY_ADJUSTED"
        , outputsize = "full") %>%
@@ -170,7 +171,7 @@ for(i in 1:(nrow(all_dat_ath)-1)){
 }
 ```
 
-With all our drawdowns calculated, let's break those down into categories -- how much sell off should you wait for before buying in?:
+With all our drawdowns calculated, let's break those down into the following categories:
 * -1% to -5%
 * -5% to -10%
 * -10% to -20%
@@ -233,19 +234,51 @@ all_dat %>%
 grid.arrange(plot_thresh1, plot_thresh2, plot_thresh3, plot_thresh4)
 ```
 
-What would've happened if we bought in during those fear-filled drawdowns? Let's take a look at the returns for each category over the next 20, 50, 100, and 200 days:
+What would've happened if we bought in during those fear-filled drawdowns? Let's take a look at the returns for each drawdown category (dd_cat) over the next 20, 50, 100, and 200 days:
 
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+## for each dip category, how much return 20, 50, 100, 200 days out
+dip_performance = data.frame(dd_cat = as.character()
+                             , d20 = as.numeric()
+                             , d50 = as.numeric()
+                             , d100 = as.numeric()
+                             , d200 = as.numeric())
+
+for(i in 1:nrow(drawdown_cat)){
+  
+  # all dates after drawdown
+  all_dat %>%  
+    filter(timestamp >= drawdown_cat$drawdown_dt[i]) %>% 
+    mutate(row_id2 = row_number()
+           , days_forward = case_when(row_id2 == 1 ~ "start",
+                                      row_id2 == 20 ~ "d20",
+                                      row_id2 == 50 ~ "d50",
+                                      row_id2 == 100 ~ "d100",
+                                      row_id2 == 200 ~ "d200")) %>% 
+    filter(!is.na(days_forward)) %>% 
+    select(close, days_forward) %>% 
+    spread(days_forward, close) %>% 
+    mutate_at(vars(-start), funs((./start)-1)) %>% 
+    mutate(dd_cat = drawdown_cat$dd_thresh[i]) %>% 
+    select(-start) -> perf_tmp
+  
+  dip_performance %>% 
+    bind_rows(perf_tmp) -> dip_performance
+  
+}
+
+## summarize results
 dip_performance %>% 
   group_by(dd_cat) %>% 
   summarise(n = n()
-            , d20 = mean(d20, na.rm = TRUE)
-            , d50 = mean(d50, na.rm = TRUE)
-            , d100 = mean(d100, na.rm = TRUE)
-            , d200 = mean(d200, na.rm = TRUE)) %>% 
-  ungroup() -> dip_performance_sum
+            , d20 = scales::percent(mean(d20, na.rm = TRUE))
+            , d50 = scales::percent(mean(d50, na.rm = TRUE))
+            , d100 = scales::percent(mean(d100, na.rm = TRUE))
+            , d200 = scales::percent(mean(d200, na.rm = TRUE))) %>% 
+  ungroup() %>% 
+  as.data.frame() -> dip_performance_sum
 
-dip_performance_sum
+knitr::kable(dip_performance_sum)
 ```
 
 Surprisingly, buying in when others are fearful produces positive returns over the short-to-long term, with the largest return actually coming off the largest drawdowns.
