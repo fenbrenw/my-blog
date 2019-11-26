@@ -54,10 +54,9 @@ all_dat %&gt;%
 
 plot_ath</code></pre>
 <p><img src="/post/2019-11-24-buy-the-dip_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
-<p>The second half of the dataset has significantly more ATHs than the first. Would have prefered a more balanced universe over time, but oh well.</p>
+<p>The second half of the dataset has significantly more ATHs than the first. We would have prefered a more balanced universe over time, but oh well.</p>
 <p>We’ll calculate all time highs (ATH) and the time difference between consecutive ones. Let’s assume that a “dip” must consist of at least three days: all time high, min, next all time high. Therefore, we’ll filter out back-to-back days of ATHs.</p>
-<pre class="r"><code>## calc all time highs (ath) + difference between ath
-all_dat %&gt;% 
+<pre class="r"><code>all_dat %&gt;% 
   mutate(row_id = row_number()
          , ath = cummax(high)) %&gt;% 
   group_by() %&gt;% 
@@ -65,7 +64,7 @@ all_dat %&gt;%
   ungroup() %&gt;% 
   filter(diff_ath != 0) %&gt;% 
   mutate(diff_ts = as.numeric(timestamp - lag(timestamp))) -&gt; all_dat_ath</code></pre>
-<p>Now, I am sure there is an easier way to calculate drawdowns between two known points (like using the PerformanceAnalytics package), I like to make things challenging for myself, so we’ll calculate drawdowns as follows:</p>
+<p>Now, I am sure there is an easier way to calculate drawdowns between two known points (like using the PerformanceAnalytics package), but who doesn’t like to make their lives unnecessarily more challenging? So we’ll calculate drawdowns as follows:</p>
 <ol style="list-style-type: decimal">
 <li>Get dates of consecutive ATH pairs.</li>
 <li>Filter original price dataset to contain all dates between those from Step 1.</li>
@@ -112,9 +111,10 @@ for(i in 1:(nrow(all_dat_ath)-1)){
     ## Doesn&#39;t non-consistent arrow direction drive you crazy?
   }
 }</code></pre>
-<p>With all our drawdowns calculated, let’s break those down into “fear buckets” – how much sell off should you wait for before buying in?: * -1% to -5% * -5% to -10% * -10% to -20% * &lt; -20%</p>
-<p>Each category plotted below, with the max drawdown of -57% occuring during the financial crisis in 2008.</p>
+<p>With all our drawdowns calculated, let’s break those down into categories – how much sell off should you wait for before buying in?: * -1% to -5% * -5% to -10% * -10% to -20% * &lt; -20%</p>
+<p>Each category is plotted below, with the max drawdown of -57% occuring during the financial crisis in 2008. Scary times…</p>
 <p><img src="/post/2019-11-24-buy-the-dip_files/figure-html/unnamed-chunk-11-1.png" width="816" /></p>
-<p>Surprisingly (?), returns in each drawdown category (dd_cat) are positive over the next 20, 50, 100, and 200 trading days from the sell off minimum.</p>
-<p>Obviously we can’t know a drawdown actually falls into one of those categories until the next ATH is in place, but we still see that “buying the dip” produce optimistic results. While it would be hard to get in at a “3 % correct” only for prices to sell off to -%50, as long as you keep buying in, things may turn around in the long term.</p>
+<p>Would ya look at that: returns in each drawdown category (dd_cat) are <strong>positive</strong> over the next 20, 50, 100, and 200 trading days from drawdown.</p>
+<p>Obviously we can’t know a drawdown actually falls into one of those categories until the next ATH is in place, but we still see that “buying the dip” can produce optimistic results. While it would be hard to get in at a “3 % correct” only for prices to sell off to -%50, as long as you keep buying in, things may turn around in the long term.</p>
+<p>Maybe Warren Buffet knows what he’s talking about.</p>
 </div>

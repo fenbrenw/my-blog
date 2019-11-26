@@ -79,7 +79,7 @@ all_dat <- readRDS("/Users/Fennon/Desktop/My Blog/projects/buy_the_dip/all_dat_f
 ```
 
 Let's take a look at ATHs over time.
-```{r, echo = FALSE}
+```{r, echo = FALSE, message = FALSE}
 ## calc all time highs (ath) + difference between ath
 all_dat %>% 
   mutate(row_id = row_number()
@@ -105,12 +105,11 @@ all_dat %>%
 plot_ath
 ```
 
-The second half of the dataset has significantly more ATHs than the first. Would have prefered a more balanced universe over time, but oh well. 
+The second half of the dataset has significantly more ATHs than the first. We would have prefered a more balanced universe over time, but oh well. 
 
 We'll calculate all time highs (ATH) and the time difference between consecutive ones. Let's assume that a "dip" must consist of at least three days: all time high, min, next all time high. Therefore, we'll filter out back-to-back days of ATHs.
 
 ```{r}
-## calc all time highs (ath) + difference between ath
 all_dat %>% 
   mutate(row_id = row_number()
          , ath = cummax(high)) %>% 
@@ -121,7 +120,7 @@ all_dat %>%
   mutate(diff_ts = as.numeric(timestamp - lag(timestamp))) -> all_dat_ath
 ```
 
-Now, I am sure there is an easier way to calculate drawdowns between two known points (like using the PerformanceAnalytics package), I like to make things challenging for myself, so we'll calculate drawdowns as follows:
+Now, I am sure there is an easier way to calculate drawdowns between two known points (like using the PerformanceAnalytics package), but who doesn't like to make their lives unnecessarily more challenging? So we'll calculate drawdowns as follows:
 
 1. Get dates of consecutive ATH pairs.
 2. Filter original price dataset to contain all dates between those from Step 1.
@@ -171,13 +170,13 @@ for(i in 1:(nrow(all_dat_ath)-1)){
 }
 ```
 
-With all our drawdowns calculated, let's break those down into "fear buckets" -- how much sell off should you wait for before buying in?:
+With all our drawdowns calculated, let's break those down into categories -- how much sell off should you wait for before buying in?:
 * -1% to -5%
 * -5% to -10%
 * -10% to -20%
 * < -20%
 
-Each category plotted below, with the max drawdown of -57% occuring during the financial crisis in 2008.
+Each category is plotted below, with the max drawdown of -57% occuring during the financial crisis in 2008. Scary times...
 
 ```{r echo = FALSE}
 drawdown_dat %>% 
@@ -234,7 +233,7 @@ all_dat %>%
 grid.arrange(plot_thresh1, plot_thresh2, plot_thresh3, plot_thresh4)
 ```
 
-Surprisingly (?), returns in each drawdown category (dd_cat) are positive over the next 20, 50, 100, and 200 trading days from the sell off minimum.
+Would ya look at that: returns in each drawdown category (dd_cat) are **positive** over the next 20, 50, 100, and 200 trading days from drawdown.
 
 ```{rm echo = FALSE}
 dip_performance %>% 
@@ -249,4 +248,6 @@ dip_performance %>%
 dip_performance_sum
 ```
 
-Obviously we can't know a drawdown actually falls into one of those categories until the next ATH is in place, but we still see that "buying the dip" produce optimistic results. While it would be hard to get in at a "3 % correct" only for prices to sell off to -%50, as long as you keep buying in, things may turn around in the long term. 
+Obviously we can't know a drawdown actually falls into one of those categories until the next ATH is in place, but we still see that "buying the dip" can produce optimistic results. While it would be hard to get in at a "3 % correct" only for prices to sell off to -%50, as long as you keep buying in, things may turn around in the long term. 
+
+Maybe Warren Buffet knows what he's talking about.
