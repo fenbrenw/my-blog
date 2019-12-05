@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Let&#39;s Try Momentum | My minimal Hugo website</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    <style>
+    html body, h1, h2, h3, h4, h5, h6 {font-family: Raleway, Verdana, Arial, sans-serif;}
+    main {font-family: Proxima Nova, Verdana, Arial, sans-serif;}
+    :root {--accent: #0078ff;}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Proxima%20Nova">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+
+    
+  </head>
+
+  <body>
+    <nav>
+    <ul class="menu">
+      
+      <li><a href="/">Home</a></li>
+      
+      <li><a href="/post/">Blog</a></li>
+      
+      <li><a href="/categories/">Categories</a></li>
+      
+      <li><a href="/tags/">Tags</a></li>
+      
+      <li><a href="/page/about/">About</a></li>
+      
+      <li><a href="/page/links/">Links</a></li>
+      
+    </ul>
+    <hr/>
+    </nav>
+
+
+<div class="article-meta">
+	<span class="title">Let&#39;s Try Momentum</span>
+	
+		<div class="meta">December 1, 2019</div>
+	
+	
+	
+		<div class="meta">
+			[ 
+			<a href='/categories/finance'>Finance</a> ]
+		</div>
+	
+	<kbd class="item-tag">
+		<a href='/tags/algotrading'>algotrading</a></kbd>
+	<kbd class="item-tag">
+		<a href='/tags/r'>r</a></kbd>
+	<kbd class="item-tag">
+		<a href='/tags/alpha-vantage'>alpha vantage</a></kbd>
+	<kbd class="item-tag">
+		<a href='/tags/financial-research'>financial research</a></kbd>
+	
+</div>
+
+<main>
+
+
+<p>Can a <a href="https://www.investopedia.com/terms/m/momentum.asp">momentum</a> strategy beat the gold standard Buy And Hold? According to some talented <a href="http://www.business.unr.edu/faculty/liuc/files/BADM742/Jegadeesh_Titman_1993.pdf">financial researchers</a> and <a href="https://www.aqr.com/-/media/AQR/Documents/Insights/White-Papers/The-Case-for-Momentum-Investing.pdf">asset managers</a>, the answer is yes.</p>
+<p>Let’s see for ourselves. We’ll use a long-only strategy and trade <strong>SPY</strong>, the SPDR S&amp;P500 ETF designed to track the S&amp;P 500 stock market index. Momentum will be measured based on monthly returns over the prior 3, 6, 9, and 12 months.</p>
+<p>Historical ETF data covers from 1999-2019. Feel free to explore the data yourself using the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package and <a href="https://www.alphavantage.co/documentation">Alpha Vantage API</a>.</p>
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<p>Load libraries.</p>
+<pre><code>library(tidyverse)
+library(tidyquant)
+library(reshape2)
+library(ggplot2)
+library(gridExtra)
+library(lubridate)
+library(alphavantager)
+library(scales)
+library(knitr)</code></pre>
+<p>Set Alphavantager key.</p>
+<pre class="r"><code>av_api_key(&quot;my_key_goes_here&quot;)</code></pre>
+</div>
+<div id="get-historical-etf-data" class="section level1">
+<h1>Get Historical ETF Data</h1>
+<p>Get all available price data on a monthly timeframe.</p>
+<p>Calculate momentum as the return over the past n = 3, 6, 9, and 12 months based on month close. We’ll get the past n months return by using lag(), but since this current month’s close counts, we’ll use lag(n-1).</p>
+<pre class="r"><code>all_mthly %&gt;% 
+  mutate(m3 = close - lag(close, 2)
+         , m6 = close - lag(close, 5)
+         , m9 = close - lag(close, 8)
+         , m12 = close - lag(close, 11)) -&gt; all_momo</code></pre>
+<pre class="r"><code>head(all_momo, 5)</code></pre>
+<pre><code>## # A tibble: 5 x 12
+##   timestamp   open  high   low close adjusted.close volume dividend.amount
+##   &lt;date&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;          &lt;dbl&gt;  &lt;dbl&gt;           &lt;dbl&gt;
+## 1 1999-12-31  139.  148.  139   147.          101.  1.22e8           0.348
+## 2 2000-01-31  148.  148.  135   140.           96.4 1.57e8           0    
+## 3 2000-02-29  140.  145.  133.  137.           94.9 1.87e8           0    
+## 4 2000-03-31  138.  156.  135.  150.          104.  2.48e8           0.371
+## 5 2000-04-28  150.  153.  134.  145.          100.  2.29e8           0    
+## # ... with 4 more variables: m3 &lt;dbl&gt;, m6 &lt;dbl&gt;, m9 &lt;dbl&gt;, m12 &lt;dbl&gt;</code></pre>
+</div>
+<div id="buysell-rules" class="section level1">
+<h1>Buy/Sell Rules</h1>
+<p>According to the research, if momentum (MOMO) is positive, price is likely to continue in the same positive direction. So we’ll make the following buy/sell decisions:</p>
+<ul>
+<li>Buy if MOMO &gt; 0 (unless already in a trade)</li>
+<li>Sell if MOMO &lt; 0 (unless already out of a trade)</li>
+</ul>
+<pre class="r"><code>all_momo %&gt;% 
+  mutate(signal3 = case_when(m3 &gt; 0 ~ &quot;buy&quot;
+                              , m3 &lt; 0 ~ &quot;sell&quot;)
+         , signal6 = case_when(m6 &gt; 0 ~ &quot;buy&quot;
+                               , m6 &lt; 0 ~ &quot;sell&quot;)
+         , signal9 = case_when(m9 &gt; 0 ~ &quot;buy&quot;
+                               , m9 &lt; 0 ~ &quot;sell&quot;)
+         , signal12 = case_when(m12 &gt; 0 ~ &quot;buy&quot;
+                                , m12 &lt; 0 ~ &quot;sell&quot;)
+         
+         , previous_signal3 = lag(signal3, 1)
+         , previous_signal6 = lag(signal6, 1)
+         , previous_signal9 = lag(signal9, 1)
+         , previous_signal12 = lag(signal12, 1)
+         
+         # only buy and sell when current signal different from previous signal
+         , decision3 = case_when(signal3 == previous_signal3 &amp; previous_signal3 == &quot;buy&quot; ~ &quot;hold&quot;
+                                 , signal3 == previous_signal3 &amp; previous_signal3 == &quot;sell&quot; ~ &quot;out&quot;
+                                  , TRUE ~ signal3)
+         , decision6 = case_when(signal6 == previous_signal6 &amp; previous_signal6 == &quot;buy&quot; ~ &quot;hold&quot;
+                                 , signal6 == previous_signal6 &amp; previous_signal6 == &quot;sell&quot; ~ &quot;out&quot;
+                                 , TRUE ~ signal6)
+         , decision9 = case_when(signal9 == previous_signal9 &amp; previous_signal9 == &quot;buy&quot; ~ &quot;hold&quot;
+                                 , signal9 == previous_signal9 &amp; previous_signal9 == &quot;sell&quot; ~ &quot;out&quot;
+                                 , TRUE ~ signal9)
+         , decision12 = case_when(signal12 == previous_signal12 &amp; previous_signal12 == &quot;buy&quot; ~ &quot;hold&quot;
+                                  , signal12 == previous_signal12 &amp; previous_signal12 == &quot;sell&quot; ~ &quot;out&quot;
+                                  , TRUE ~ signal12)) %&gt;% 
+  data.frame() -&gt; momo_trade</code></pre>
+<p>Below, the trading descisions are plotted for each momentum strategy. Verticals lines represent <span style="color:green">buy</span> and <span style="color:red">sell</span>. <img src="/post/2019-12-01-momentum_files/figure-html/unnamed-chunk-9-1.png" width="816" /></p>
+<p>While it may not seem obvious in the 3mo and 6mo, the plots generally show momentum helped us weather the financial storms of the tech bubble (2000-2002), housing crisis (2007-2009), and mini-wtf in late 2018. Below are the same plots, but with financial crises shaded in grey.</p>
+<p><img src="/post/2019-12-01-momentum_files/figure-html/unnamed-chunk-10-1.png" width="816" /></p>
+<p>With avoiding those scary times, it looks like these strategies actually could produce better returns with lower drawdowns than Buy and Hold. Let’s compare all strategies using the metric RoMad – return over maximum drawdown. This helps us gauge how much pain we’d be willing to take to capture the gains (if any).</p>
+<pre class="r"><code>## trade performance vs buy and hold
+for(i in c(&quot;3&quot;, &quot;6&quot;, &quot;9&quot;, &quot;12&quot;)){
+  
+  if(i == &quot;3&quot;){
+    
+    # calc monthly returns while in an open trade + holding
+    momo_trade %&gt;% 
+      select(timestamp, close, ends_with(i)) %&gt;% 
+      rename(&quot;decision&quot; = glue::glue(&quot;decision{i}&quot;)
+             , &quot;previous_signal&quot; = glue::glue(&quot;previous_signal{i}&quot;)) %&gt;% 
+      filter(!is.na(decision)) %&gt;% 
+      mutate(return_tmp = (close - lag(close, 1)) / lag(close, 1)
+             , return = ifelse(previous_signal == &quot;buy&quot;, return_tmp, 0)
+             , return = ifelse(is.na(return), 0 , return)
+             , cum_return = cumprod(1 + return)
+             , account = 10000 * cum_return
+             , momo = as.character(glue::glue(&quot;{i}mo&quot;))) %&gt;% 
+      select(momo, timestamp, close, previous_signal, decision
+             , return, cum_return, account) -&gt; momo_perf
+      
+  
+    }else{
+      
+      # calc monthly returns while in an open trade + holding
+      momo_trade %&gt;% 
+        select(timestamp, close, ends_with(i)) %&gt;% 
+        rename(&quot;decision&quot; = glue::glue(&quot;decision{i}&quot;)
+               , &quot;previous_signal&quot; = glue::glue(&quot;previous_signal{i}&quot;)) %&gt;% 
+        filter(!is.na(decision)) %&gt;% 
+        mutate(return_tmp = (close - lag(close, 1)) / lag(close, 1)
+               , return = ifelse(previous_signal == &quot;buy&quot;, return_tmp, 0)
+               , return = ifelse(is.na(return), 0 , return)
+               , cum_return = cumprod(1 + return)
+               , account = 10000 * cum_return
+               , momo = as.character(glue::glue(&quot;{i}mo&quot;))) %&gt;% 
+        select(momo, timestamp, close, previous_signal, decision
+               , return, cum_return, account) -&gt; momo_perf_tmp
+      
+      momo_perf %&gt;% 
+        bind_rows(momo_perf_tmp) -&gt; momo_perf
+    
+  }
+  
+}
+
+## add in buy and hold perf
+all_mthly %&gt;% 
+  mutate(return = (close - lag(close, 1)) / lag(close, 1)
+         , return = ifelse(is.na(return), 0, return)
+         , cum_return = cumprod(1 + return)
+         , account = 10000 * cum_return
+         , momo = &quot;buy_hold&quot;
+         , previous_signal = &quot;hold&quot;
+         , decision = &quot;hold&quot;) %&gt;% 
+  select(momo, timestamp, close, previous_signal, decision
+         , return, cum_return, account) %&gt;% 
+  data.frame -&gt; buy_hold_perf
+
+momo_perf %&gt;% 
+  bind_rows(buy_hold_perf) -&gt; all_perf
+
+all_perf %&gt;% 
+  group_by(momo) %&gt;% 
+  mutate(port_return_tmp = ifelse(row_number() == n(), cum_return, NA)
+         , port_return = port_return_tmp - 1) %&gt;% 
+  filter(!is.na(port_return)) %&gt;% 
+  select(momo, port_return) %&gt;% 
+  inner_join(all_perf, by = c(&quot;momo&quot;)) %&gt;% 
+  group_by(momo, port_return) %&gt;% 
+  summarise(max_drawdown = maxDrawdown(return)) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(romad = port_return / max_drawdown) %&gt;% 
+  # mutate_all(vars(port_return:romad), as.numeric()) %&gt;%
+  # mutate_all(vars(port_return:nomad), round(2)) %&gt;% 
+  as.data.frame() -&gt; port_analytics</code></pre>
+<p>Kable this.</p>
+<pre class="r"><code>port_analytics</code></pre>
+<pre><code>##       momo port_return max_drawdown    romad
+## 1     12mo   1.2597257    0.2074641 6.072017
+## 2      3mo   0.8725126    0.2712787 3.216296
+## 3      6mo   1.9777629    0.2015169 9.814379
+## 4      9mo   1.1826661    0.1984354 5.959955
+## 5 buy_hold   1.1399830    0.5219528 2.184073</code></pre>
+<p>Words</p>
+<p><img src="/post/2019-12-01-momentum_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+</div>
+</main>
+
+
+	
+<nav class="post-nav">
+	<div class="post-prev">
+		<a href="/post/buy-the-dip/" rel="prev">
+			<span class="post-nav__caption">
+				« Older
+			</span>
+			<p class="post-nav__title-left">
+				Buy The Dip
+			</p>
+		</a>
+	</div>
+</nav>
+
+
+
+
+
+
+
+	<h4 class="related">Related Posts</h4>
+	
+		<li>
+	<span class="date">2019/11/24</span>
+	<a href="/post/buy-the-dip/">Buy The Dip</a>
+</li>
+
+	
+		<li>
+	<span class="date">2019/11/03</span>
+	<a href="/post/ema-sma-cross-algorithm-backtest/">EMA x SMA Algorithm &amp; Backtest</a>
+</li>
+
+	
+
+    
+
+
+<footer>
+<hr/>
+
+
+	<nav>
+		<ul class="menu">
+			
+			<li><a href="mailto:me@example.com"><i class="fa fa-envelope-o"></i></a></li>
+			
+			<li><a href="https://github.com/fenbrenw/my-blog/"><i class="fa fa-github"></i></a></li>
+			
+			<li><a href="https://www.linkedin.com/in/user-name-a123456789/"><i class="fa fa-linkedin"></i></a></li>
+			
+		</ul>
+	</nav>
+
+
+<p class="copyright text-muted">
+	&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and <a href="https://github.com/oneleaftea/milano">Milano</a>
+</p>
+
+  </footer>
+  </body>
+</html>
+

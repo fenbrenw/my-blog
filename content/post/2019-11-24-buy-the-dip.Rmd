@@ -15,8 +15,6 @@ disableComments: no
 Warren Buffett once said that as an investor, it is wise to be “Fearful when others are greedy and greedy when others are fearful.”
 
 
-
-
 In a up trend on any timescale, a smart trader would "buy the dip" -- buy any time there's a sizeable selloff. Let's define an "up trend" in the broadest sense: if price is making higher **all time highs**, it's in an uptrend. So any time a new all time high is achieved, and price starts to slide, does buying into the selloff and fear produce positive returns?
 
 
@@ -172,6 +170,7 @@ for(i in 1:(nrow(all_dat_ath)-1)){
 ```
 
 With all our drawdowns calculated, let's break those down into the following categories:
+
 * -1% to -5%
 * -5% to -10%
 * -10% to -20%
@@ -234,7 +233,7 @@ all_dat %>%
 grid.arrange(plot_thresh1, plot_thresh2, plot_thresh3, plot_thresh4)
 ```
 
-What would've happened if we bought in during those fear-filled drawdowns? Let's take a look at the returns for each drawdown category (dd_cat) over the next 20, 50, 100, and 200 days:
+What would've happened if we bought in during those fear-filled drawdowns? Below are the returns over the next 20, 50, 100, and 200 days after entering each drawdown category (dd_cat) :
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 ## for each dip category, how much return 20, 50, 100, 200 days out
