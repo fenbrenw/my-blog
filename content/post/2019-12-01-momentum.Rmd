@@ -34,6 +34,7 @@ library(lubridate)
 library(alphavantager)
 library(scales)
 library(knitr)
+library(kableExtra)
 ```
 
 ```
@@ -246,9 +247,7 @@ for(i in c("3", "6", "9", "12")){
       
       momo_perf %>% 
         bind_rows(momo_perf_tmp) -> momo_perf
-    
   }
-  
 }
 
 ## add in buy and hold perf
@@ -278,15 +277,17 @@ all_perf %>%
   summarise(max_drawdown = maxDrawdown(return)) %>% 
   ungroup() %>% 
   mutate(romad = port_return / max_drawdown) %>% 
-  # mutate_all(vars(port_return:romad), as.numeric()) %>%
-  # mutate_all(vars(port_return:nomad), round(2)) %>% 
   as.data.frame() -> port_analytics
+
+
+## kable for a pretty table
+port_analytics %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")
+                , full_width = FALSE
+                , digits = 2)
 ```
 
-Kable this.
-```{r}
-port_analytics
-```
 
 
 Words

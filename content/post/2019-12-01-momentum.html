@@ -13,6 +13,7 @@ tags:
 disableComments: no
 ---
 
+<script src="/rmarkdown-libs/kePrint/kePrint.js"></script>
 
 
 <p>Can a <a href="https://www.investopedia.com/terms/m/momentum.asp">momentum</a> strategy beat the gold standard Buy And Hold? According to some talented <a href="http://www.business.unr.edu/faculty/liuc/files/BADM742/Jegadeesh_Titman_1993.pdf">financial researchers</a> and <a href="https://www.aqr.com/-/media/AQR/Documents/Insights/White-Papers/The-Case-for-Momentum-Investing.pdf">asset managers</a>, the answer is yes.</p>
@@ -169,13 +170,99 @@ all_perf %&gt;%
   # mutate_all(vars(port_return:nomad), round(2)) %&gt;% 
   as.data.frame() -&gt; port_analytics</code></pre>
 <p>Kable this.</p>
-<pre class="r"><code>port_analytics</code></pre>
-<pre><code>##       momo port_return max_drawdown    romad
-## 1     12mo   1.2597257    0.2074641 6.072017
-## 2      3mo   0.8725126    0.2712787 3.216296
-## 3      6mo   1.9777629    0.2015169 9.814379
-## 4      9mo   1.1826661    0.1984354 5.959955
-## 5 buy_hold   1.1399830    0.5219528 2.184073</code></pre>
+<pre class="r"><code>port_analytics %&gt;% 
+  kable() %&gt;% 
+  kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;))</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+momo
+</th>
+<th style="text-align:right;">
+port_return
+</th>
+<th style="text-align:right;">
+max_drawdown
+</th>
+<th style="text-align:right;">
+romad
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+12mo
+</td>
+<td style="text-align:right;">
+1.2597257
+</td>
+<td style="text-align:right;">
+0.2074641
+</td>
+<td style="text-align:right;">
+6.072017
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+3mo
+</td>
+<td style="text-align:right;">
+0.8725126
+</td>
+<td style="text-align:right;">
+0.2712787
+</td>
+<td style="text-align:right;">
+3.216296
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+6mo
+</td>
+<td style="text-align:right;">
+1.9777629
+</td>
+<td style="text-align:right;">
+0.2015169
+</td>
+<td style="text-align:right;">
+9.814379
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+9mo
+</td>
+<td style="text-align:right;">
+1.1826661
+</td>
+<td style="text-align:right;">
+0.1984354
+</td>
+<td style="text-align:right;">
+5.959955
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+buy_hold
+</td>
+<td style="text-align:right;">
+1.1399830
+</td>
+<td style="text-align:right;">
+0.5219528
+</td>
+<td style="text-align:right;">
+2.184073
+</td>
+</tr>
+</tbody>
+</table>
 <p>Words</p>
 <p><img src="/post/2019-12-01-momentum_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
 </div>
