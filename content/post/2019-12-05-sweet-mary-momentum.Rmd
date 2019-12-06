@@ -288,6 +288,7 @@ all_perf %>%
 port_analytics %>% 
   mutate(port_return = percent(port_return)
          , max_drawdown = percent(max_drawdown)) %>% 
+  arrange(factor(momo, levels = c("3mo", "6mo", "9mo", "12mo", "buy_hold"))) %>% 
   kable(digits = c(0, 3, 3, 3)
        , align = "c") %>% 
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")
@@ -296,9 +297,10 @@ port_analytics %>%
 ```
  
 The momentum strategies...
-
+Don't froget -- the *higher* romad is the *less* pain you had to deal with if following that strategy. So while 
 
 Below is a plot of the profolio under each strategy assuming a starting investment of $10000.
+
 ```{r echo = FALSE}
 ## plot momo returns (first point represents first buy signal, all others time of sell)
 all_perf$momo <- factor(all_perf$momo, levels = c("3mo", "6mo", "9mo", "12mo", "buy_hold"))
