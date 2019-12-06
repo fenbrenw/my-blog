@@ -185,9 +185,7 @@ for(i in c(&quot;3&quot;, &quot;6&quot;, &quot;9&quot;, &quot;12&quot;)){
       
       momo_perf %&gt;% 
         bind_rows(momo_perf_tmp) -&gt; momo_perf
-    
   }
-  
 }
 
 ## add in buy and hold perf
@@ -217,104 +215,98 @@ all_perf %&gt;%
   summarise(max_drawdown = maxDrawdown(return)) %&gt;% 
   ungroup() %&gt;% 
   mutate(romad = port_return / max_drawdown) %&gt;% 
-  # mutate_all(vars(port_return:romad), as.numeric()) %&gt;%
-  # mutate_all(vars(port_return:nomad), round(2)) %&gt;% 
   as.data.frame() -&gt; port_analytics</code></pre>
-<p>Kable this.</p>
-<pre class="r"><code>port_analytics %&gt;% 
-  kable() %&gt;% 
-  kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;))</code></pre>
-<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<table class="table table-striped table-hover table-condensed table-responsive" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
-<th style="text-align:left;">
+<th style="text-align:center;">
 momo
 </th>
-<th style="text-align:right;">
+<th style="text-align:center;">
 port_return
 </th>
-<th style="text-align:right;">
+<th style="text-align:center;">
 max_drawdown
 </th>
-<th style="text-align:right;">
+<th style="text-align:center;">
 romad
 </th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align:left;">
+<td style="text-align:center;">
 12mo
 </td>
-<td style="text-align:right;">
-1.2597257
+<td style="text-align:center;">
+126%
 </td>
-<td style="text-align:right;">
-0.2074641
+<td style="text-align:center;">
+20.7%
 </td>
-<td style="text-align:right;">
-6.072017
+<td style="text-align:center;">
+6.072
 </td>
 </tr>
 <tr>
-<td style="text-align:left;">
+<td style="text-align:center;">
 3mo
 </td>
-<td style="text-align:right;">
-0.8725126
+<td style="text-align:center;">
+87%
 </td>
-<td style="text-align:right;">
-0.2712787
+<td style="text-align:center;">
+27.1%
 </td>
-<td style="text-align:right;">
-3.216296
+<td style="text-align:center;">
+3.216
 </td>
 </tr>
 <tr>
-<td style="text-align:left;">
+<td style="text-align:center;">
 6mo
 </td>
-<td style="text-align:right;">
-1.9777629
+<td style="text-align:center;">
+198%
 </td>
-<td style="text-align:right;">
-0.2015169
+<td style="text-align:center;">
+20.2%
 </td>
-<td style="text-align:right;">
-9.814379
+<td style="text-align:center;">
+9.814
 </td>
 </tr>
 <tr>
-<td style="text-align:left;">
+<td style="text-align:center;">
 9mo
 </td>
-<td style="text-align:right;">
-1.1826661
+<td style="text-align:center;">
+118%
 </td>
-<td style="text-align:right;">
-0.1984354
+<td style="text-align:center;">
+19.8%
 </td>
-<td style="text-align:right;">
-5.959955
+<td style="text-align:center;">
+5.960
 </td>
 </tr>
 <tr>
-<td style="text-align:left;">
+<td style="text-align:center;">
 buy_hold
 </td>
-<td style="text-align:right;">
-1.1399830
+<td style="text-align:center;">
+114%
 </td>
-<td style="text-align:right;">
-0.5219528
+<td style="text-align:center;">
+52.2%
 </td>
-<td style="text-align:right;">
-2.184073
+<td style="text-align:center;">
+2.184
 </td>
 </tr>
 </tbody>
 </table>
-<p>Words</p>
+<p>The momentum strategies…</p>
 <p><img src="/post/2019-12-01-momentum_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
 </div>
 </main>
