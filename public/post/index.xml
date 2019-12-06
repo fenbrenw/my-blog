@@ -6,10 +6,21 @@
     <description>Recent content in Posts on My minimal Hugo website</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 24 Nov 2019 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 05 Dec 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Sweet Mary Momentum</title>
+      <link>/post/sweet-mary-momentum/</link>
+      <pubDate>Thu, 05 Dec 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/post/sweet-mary-momentum/</guid>
+      <description>Can a momentum strategy beat the gold standard Buy And Hold? According to some talented financial researchers and asset managers, the answer is yes.
+Let’s see for ourselves. We’ll use a long-only strategy and trade SPY, the SPDR S&amp;amp;P500 ETF designed to track the S&amp;amp;P 500 stock market index. Momentum will be measured based on monthly returns over the prior 3, 6, 9, and 12 months.
+Historical ETF data covers from 1999-2019.</description>
+    </item>
     
     <item>
       <title>Buy The Dip</title>

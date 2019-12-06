@@ -1,0 +1,324 @@
+---
+title: Sweet Mary Momentum
+author: Fennon W.
+date: '2019-12-05'
+slug: sweet-mary-momentum
+categories:
+  - Finance
+tags:
+  - algotrading
+  - r
+  - alpha vantage
+  - financial research
+disableComments: no
+---
+
+
+
+Can a <a href="https://www.investopedia.com/terms/m/momentum.asp">momentum</a> strategy beat the gold standard Buy And Hold? According to some talented <a href="http://www.business.unr.edu/faculty/liuc/files/BADM742/Jegadeesh_Titman_1993.pdf">financial researchers</a> and <a href="https://www.aqr.com/-/media/AQR/Documents/Insights/White-Papers/The-Case-for-Momentum-Investing.pdf">asset managers</a>, the answer is yes. 
+
+Let's see for ourselves. We'll use a long-only strategy and trade **SPY**, the SPDR S&P500 ETF designed to track the S&P 500 stock market index. Momentum will be measured based on monthly returns over the prior 3, 6, 9, and 12 months.
+
+Historical ETF data covers from 1999-2019. Feel free to explore the data yourself using the <a href="https://github.com/business-science/alphavantager">alphavantager</a> R package and <a href="https://www.alphavantage.co/documentation">Alpha Vantage API</a>.
+
+
+# Setup
+
+Load libraries.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(tidyquant)
+library(reshape2)
+library(ggplot2)
+library(gridExtra)
+library(lubridate)
+library(alphavantager)
+library(scales)
+library(knitr)
+library(kableExtra)
+```
+
+```
+library(tidyverse)
+library(tidyquant)
+library(reshape2)
+library(ggplot2)
+library(gridExtra)
+library(lubridate)
+library(alphavantager)
+library(scales)
+library(knitr)
+```
+
+Set Alphavantager key.
+```{r eval = FALSE}
+av_api_key("my_key_goes_here")
+```
+
+```{r echo = FALSE}
+av_api_key("ZVWHBIOOHGCNKHD3")
+```
+
+# Get Historical ETF Data
+
+Get all available price data on a monthly timeframe.
+```{r echo = FALSE, eval = FALSE, message = FALSE}
+av_get(symbol = "SPY"
+       , av_fun = "TIME_SERIES_MONTHLY_ADJUSTED"
+       , outputsize = "full") -> all_mthly
+```
+
+```{r echo = FALSE}
+all_mthly <- readRDS("/Users/Fennon/Desktop/My Blog/projects/*DATA*/all_mthly_spy.rds")
+```
+
+
+Calculate momentum as the return over the past n = 3, 6, 9, and 12 months based on month close. We'll get the past n months return by using lag(), but since this current month's close counts, we'll use lag(n-1).
+```{r warning = FALSE}
+all_mthly %>% 
+  mutate(m3 = close - lag(close, 2)
+         , m6 = close - lag(close, 5)
+         , m9 = close - lag(close, 8)
+         , m12 = close - lag(close, 11)) -> all_momo
+
+```
+
+```{r}
+head(all_momo, 5)
+```
+
+
+
+# Buy/Sell Rules
+According to the research, if momentum (MOMO) is positive, price is likely to continue in the same positive direction. So we'll make the following buy/sell decisions:
+
+* Buy if MOMO > 0 (unless already in a trade)
+* Sell if MOMO < 0 (unless already out of a trade)
+
+```{r}
+all_momo %>% 
+  mutate(signal3 = case_when(m3 > 0 ~ "buy"
+                              , m3 < 0 ~ "sell")
+         , signal6 = case_when(m6 > 0 ~ "buy"
+                               , m6 < 0 ~ "sell")
+         , signal9 = case_when(m9 > 0 ~ "buy"
+                               , m9 < 0 ~ "sell")
+         , signal12 = case_when(m12 > 0 ~ "buy"
+                                , m12 < 0 ~ "sell")
+         
+         , previous_signal3 = lag(signal3, 1)
+         , previous_signal6 = lag(signal6, 1)
+         , previous_signal9 = lag(signal9, 1)
+         , previous_signal12 = lag(signal12, 1)
+         
+         # only buy and sell when current signal different from previous signal
+         , decision3 = case_when(signal3 == previous_signal3 & previous_signal3 == "buy" ~ "hold"
+                                 , signal3 == previous_signal3 & previous_signal3 == "sell" ~ "out"
+                                  , TRUE ~ signal3)
+         , decision6 = case_when(signal6 == previous_signal6 & previous_signal6 == "buy" ~ "hold"
+                                 , signal6 == previous_signal6 & previous_signal6 == "sell" ~ "out"
+                                 , TRUE ~ signal6)
+         , decision9 = case_when(signal9 == previous_signal9 & previous_signal9 == "buy" ~ "hold"
+                                 , signal9 == previous_signal9 & previous_signal9 == "sell" ~ "out"
+                                 , TRUE ~ signal9)
+         , decision12 = case_when(signal12 == previous_signal12 & previous_signal12 == "buy" ~ "hold"
+                                  , signal12 == previous_signal12 & previous_signal12 == "sell" ~ "out"
+                                  , TRUE ~ signal12)) %>% 
+  data.frame() -> momo_trade
+```
+
+
+Below, the trading descisions are plotted for each momentum strategy. Verticals lines represent <span style="color:green">buy</span> and <span style="color:red">sell</span>.
+```{r echo = FALSE, fig.width = 8.5, fig.height = 6}
+
+for(i in c("3", "6", "9", "12")){
+  
+  momo_trade %>% 
+    select(timestamp, close, ends_with(i)) %>% 
+    rename("decision" = glue::glue("decision{i}")
+           , "previous_signal" = glue::glue("previous_signal{i}")) %>% 
+    as.data.frame() -> momo_trade_m
+  
+  momo_trade_m %>% 
+    ggplot(aes(x = timestamp, y = close)) +
+    geom_line() + 
+    scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+    geom_vline(data = momo_trade_m %>% filter(decision == "buy"),
+               aes(xintercept = timestamp),
+               col = "green3",
+               linetype = "dashed") +
+    geom_vline(data = momo_trade_m %>% filter(decision == "sell"),
+               aes(xintercept = timestamp),
+               col = "red") +
+    xlab("Date") +
+    ylab("Close") +
+    theme_classic() +
+    theme(legend.title = element_blank()) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ggtitle(glue::glue("{i}mo")) -> plot_m
+  
+  assign(glue::glue("plot_m{i}"), plot_m)
+
+
+}
+
+grid.arrange(plot_m3, plot_m6, plot_m9, plot_m12)
+
+```
+
+While it may not seem obvious in the 3mo and 6mo, the plots generally show momentum helped us weather the financial storms of the tech bubble (2000-2002), housing crisis (2007-2009), and mini-wtf in late 2018. Below are the same plots, but with financial crises shaded in grey.
+
+```{r echo = FALSE, fig.width = 8.5, fig.height = 6, warning = FALSE}
+plot_m3 +
+  geom_rect(aes(xmin = as_date("2000-03-11"), xmax = as_date("2002-10-09")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2007-12-01"), xmax = as_date("2009-06-01")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2018-09-20"), xmax = as_date("2018-12-24")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) -> plot_m3_crisis
+
+plot_m6 +
+  geom_rect(aes(xmin = as_date("2000-03-11"), xmax = as_date("2002-10-09")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2007-12-01"), xmax = as_date("2009-06-01")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2018-09-20"), xmax = as_date("2018-12-24")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) -> plot_m6_crisis
+
+plot_m9 +
+  geom_rect(aes(xmin = as_date("2000-03-11"), xmax = as_date("2002-10-09")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2007-12-01"), xmax = as_date("2009-06-01")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2018-09-20"), xmax = as_date("2018-12-24")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) -> plot_m9_crisis
+
+plot_m12 +
+  geom_rect(aes(xmin = as_date("2000-03-11"), xmax = as_date("2002-10-09")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2007-12-01"), xmax = as_date("2009-06-01")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) +
+  geom_rect(aes(xmin = as_date("2018-09-20"), xmax = as_date("2018-12-24")
+                , ymin = -Inf, ymax = Inf), alpha = 0.009) -> plot_m12_crisis
+
+
+grid.arrange(plot_m3_crisis, plot_m6_crisis, plot_m9_crisis, plot_m12_crisis)
+```
+
+With avoiding those scary times, it looks like these strategies actually could produce better returns with lower drawdowns than Buy and Hold. Let's compare all strategies using the metric RoMad -- return over maximum drawdown. This helps us gauge how much pain we'd be willing to take to capture the gains (if any).
+
+```{r echo = FALSE, warning = FALSE}
+## trade performance vs buy and hold
+for(i in c("3", "6", "9", "12")){
+  
+  if(i == "3"){
+    
+    # calc monthly returns while in an open trade + holding
+    momo_trade %>% 
+      select(timestamp, close, ends_with(i)) %>% 
+      rename("decision" = glue::glue("decision{i}")
+             , "previous_signal" = glue::glue("previous_signal{i}")) %>% 
+      filter(!is.na(decision)) %>% 
+      mutate(return_tmp = (close - lag(close, 1)) / lag(close, 1)
+             , return = ifelse(previous_signal == "buy", return_tmp, 0)
+             , return = ifelse(is.na(return), 0 , return)
+             , cum_return = cumprod(1 + return)
+             , account = 10000 * cum_return
+             , momo = as.character(glue::glue("{i}mo"))) %>% 
+      select(momo, timestamp, close, previous_signal, decision
+             , return, cum_return, account) -> momo_perf
+      
+  
+    }else{
+      
+      # calc monthly returns while in an open trade + holding
+      momo_trade %>% 
+        select(timestamp, close, ends_with(i)) %>% 
+        rename("decision" = glue::glue("decision{i}")
+               , "previous_signal" = glue::glue("previous_signal{i}")) %>% 
+        filter(!is.na(decision)) %>% 
+        mutate(return_tmp = (close - lag(close, 1)) / lag(close, 1)
+               , return = ifelse(previous_signal == "buy", return_tmp, 0)
+               , return = ifelse(is.na(return), 0 , return)
+               , cum_return = cumprod(1 + return)
+               , account = 10000 * cum_return
+               , momo = as.character(glue::glue("{i}mo"))) %>% 
+        select(momo, timestamp, close, previous_signal, decision
+               , return, cum_return, account) -> momo_perf_tmp
+      
+      momo_perf %>% 
+        bind_rows(momo_perf_tmp) -> momo_perf
+  }
+}
+
+## add in buy and hold perf
+all_mthly %>% 
+  mutate(return = (close - lag(close, 1)) / lag(close, 1)
+         , return = ifelse(is.na(return), 0, return)
+         , cum_return = cumprod(1 + return)
+         , account = 10000 * cum_return
+         , momo = "buy_hold"
+         , previous_signal = "hold"
+         , decision = "hold") %>% 
+  select(momo, timestamp, close, previous_signal, decision
+         , return, cum_return, account) %>% 
+  data.frame -> buy_hold_perf
+
+momo_perf %>% 
+  bind_rows(buy_hold_perf) -> all_perf
+
+all_perf %>% 
+  group_by(momo) %>% 
+  mutate(port_return_tmp = ifelse(row_number() == n(), cum_return, NA)
+         , port_return = port_return_tmp - 1) %>% 
+  filter(!is.na(port_return)) %>% 
+  select(momo, port_return) %>% 
+  inner_join(all_perf, by = c("momo")) %>% 
+  group_by(momo, port_return) %>% 
+  summarise(max_drawdown = maxDrawdown(return)) %>% 
+  ungroup() %>% 
+  mutate(romad = port_return / max_drawdown) %>% 
+  as.data.frame() -> port_analytics
+```
+
+
+```{r echo = FALSE, warning = FALSE}
+## kable for a pretty table
+port_analytics %>% 
+  mutate(port_return = percent(port_return)
+         , max_drawdown = percent(max_drawdown)) %>% 
+  kable(digits = c(0, 3, 3, 3)
+       , align = "c") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")
+                , full_width = FALSE
+                , position = "center")
+```
+ 
+The momentum strategies...
+
+
+Below is a plot of the profolio under each strategy assuming a starting investment of $10000.
+```{r echo = FALSE}
+## plot momo returns (first point represents first buy signal, all others time of sell)
+all_perf$momo <- factor(all_perf$momo, levels = c("3mo", "6mo", "9mo", "12mo", "buy_hold"))
+
+all_perf %>% 
+  ggplot(aes(x = timestamp, y = account)) +
+  geom_line(aes(color = momo)) +
+  # geom_line(data = all_perf %>% filter(momo != "buy_hold"), aes(color = momo)) +
+  # geom_line(data = all_perf %>% filter(momo == "buy_hold"), aes(color = momo), color = "black") +
+  scale_x_date(date_breaks = "years" , date_labels = "%Y") +
+  scale_y_continuous(limits = c(0, 40000)) + 
+  xlab("Date") +
+  ylab("Account") +
+  #labs(color = "Momentum") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.title = element_blank()) +
+  ggtitle("Momo vs Buy And Hold") -> plot_returns
+
+plot_returns
+```
+
+Impressive results and in line with other studies. 
