@@ -322,6 +322,8 @@ all_perf %>%
 plot_returns
 ```
 
-Confirmed: momentum strategies have the potential to beat the gold standard Buy and Hold over the long term. **Use at your own risk.**
+Confirmed: momentum strategies have the potential to beat the gold standard Buy and Hold over the long term. 
+
+**Use at your own risk.**
 
 
