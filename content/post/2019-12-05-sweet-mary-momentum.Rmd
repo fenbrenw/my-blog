@@ -298,7 +298,7 @@ port_analytics %>%
  
 Wow. On a risk-adjusted basis, all momentum strategies beat Buy and Hold, capturing higher gains for less pain. 
 
-Assuming a starting account of $10000, below is a plot of portfolio value under each strategy.
+Below is a plot of portfolio value under each strategy, assuming a starting account value of $10,000.
 
 ```{r echo = FALSE}
 ## plot momo returns (first point represents first buy signal, all others time of sell)
@@ -322,6 +322,6 @@ all_perf %>%
 plot_returns
 ```
 
-As other research has already pointed out, momentum strategies have the potential to beat the gold standard Buy and Hold over the long term. **Use at your own risk.**
+Confirmed: momentum strategies have the potential to beat the gold standard Buy and Hold over the long term. **Use at your own risk.**
 
 
