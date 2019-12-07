@@ -70,7 +70,7 @@ av_get(symbol = "SPY"
 ```
 
 ```{r echo = FALSE}
-all_mthly <- readRDS("/Users/Fennon/Desktop/My Blog/projects/*DATA*/all_mthly_spy.rds")
+all_mthly <- readRDS("/Users/Fennon/Desktop/My Blog/projects/_DATA_/all_mthly_spy.rds")
 ```
 
 
