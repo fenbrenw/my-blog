@@ -93,7 +93,7 @@ library(knitr)</code></pre>
 <p>Below, the trading descisions are plotted for each momentum strategy. Verticals lines represent <span style="color:green">buy</span> and <span style="color:red">sell</span>. <img src="/post/2019-12-05-sweet-mary-momentum_files/figure-html/unnamed-chunk-9-1.png" width="816" /></p>
 <p>While it may not seem obvious in the 3mo and 6mo, the plots generally show momentum helped us weather the financial storms of the tech bubble (2000-2002), housing crisis (2007-2009), and mini-wtf in late 2018. Below are the same plots, but with financial crises shaded in grey.</p>
 <p><img src="/post/2019-12-05-sweet-mary-momentum_files/figure-html/unnamed-chunk-10-1.png" width="816" /></p>
-<p>With avoiding those scary times, it looks like these strategies actually could produce better returns with lower drawdowns than Buy and Hold. Let’s compare all strategies using the metric RoMad – return over maximum drawdown. This helps us gauge how much pain we’d be willing to take to capture the gains (if any).</p>
+<p>With avoiding those scary times, it looks like these strategies actually could produce better returns with lower drawdowns than Buy and Hold. Let’s compare all strategies using the metric RoMad – return over maximum drawdown. This helps us gauge how much pain is needed to capture the gains (if any).</p>
 <table class="table table-striped table-hover table-condensed table-responsive" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -112,20 +112,6 @@ romad
 </tr>
 </thead>
 <tbody>
-<tr>
-<td style="text-align:center;">
-12mo
-</td>
-<td style="text-align:center;">
-126%
-</td>
-<td style="text-align:center;">
-20.7%
-</td>
-<td style="text-align:center;">
-6.072
-</td>
-</tr>
 <tr>
 <td style="text-align:center;">
 3mo
@@ -170,6 +156,20 @@ romad
 </tr>
 <tr>
 <td style="text-align:center;">
+12mo
+</td>
+<td style="text-align:center;">
+126%
+</td>
+<td style="text-align:center;">
+20.7%
+</td>
+<td style="text-align:center;">
+6.072
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
 buy_hold
 </td>
 <td style="text-align:center;">
@@ -184,7 +184,8 @@ buy_hold
 </tr>
 </tbody>
 </table>
-<p>The momentum strategies…</p>
-<p>Below is a plot of the profolio under each strategy assuming a starting investment of $10000. <img src="/post/2019-12-05-sweet-mary-momentum_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
-<p>Impressive results and in line with other studies.</p>
+<p>Wow. On a risk-adjusted basis, all momentum strategies beat Buy and Hold, capturing higher gains for less pain.</p>
+<p>Assuming a starting account of $10000, below is a plot of portfolio value under each strategy.</p>
+<p><img src="/post/2019-12-05-sweet-mary-momentum_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<p>As other research has already pointed out, momentum strategies have the potential to beat the gold standard Buy and Hold over the long term. <strong>Use at your own risk.</strong></p>
 </div>
